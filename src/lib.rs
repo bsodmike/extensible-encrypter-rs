@@ -1,5 +1,6 @@
 use crate::aes::AesEncrypter;
 use crate::error::DefaultError;
+use aes_gcm_siv::AesGcmSiv;
 use encrypter::{Encryptable, Encrypter};
 use sha2::Sha512;
 use tracing::trace;
@@ -32,6 +33,13 @@ pub(crate) mod aes {
     impl<'a, A> AesVecBuffer<'a, A> {
         pub fn inner(&mut self) -> &mut Vec<u8> {
             &mut self.inner
+        }
+
+        pub fn from_vec(vec: Vec<u8>) -> Self {
+            Self {
+                inner: vec,
+                _life: PhantomData,
+            }
         }
     }
 
@@ -100,13 +108,27 @@ pub(crate) mod aes {
                 buffer,
             }
         }
+        pub fn decryptable(
+            encrypted_hex: String,
+            cipher: AesGcmSiv<::aes::Aes256>,
+            nonce: String,
+        ) -> Self {
+            let decoded_hex = hex::decode(encrypted_hex).unwrap();
+            let buf = AesVecBuffer::<()>::from_vec(decoded_hex);
+
+            Self {
+                cipher,
+                nonce,
+                buffer: buf,
+            }
+        }
 
         pub fn buffer(&mut self) -> &mut AesVecBuffer<'a, ()> {
             &mut self.buffer
         }
 
         /// This replaces the underlying buffer and is a distrnuctive operation.  Use with care.
-        pub fn replace_buffer(&mut self, buffer: AesVecBuffer<'a, ()>) {
+        pub fn _replace_buffer(&mut self, buffer: AesVecBuffer<'a, ()>) {
             self.buffer = buffer;
         }
 
@@ -188,6 +210,14 @@ pub fn get_encrypter<'a>(
     AesEncrypter::new(pbkdf_key_hex.clone(), plaintext)
 }
 
+pub fn get_decrypter<'a>(
+    encrypted_hex: String,
+    cipher: AesGcmSiv<::aes::Aes256>,
+    nonce: String,
+) -> AesEncrypter<'a> {
+    AesEncrypter::decryptable(encrypted_hex, cipher, nonce)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -224,6 +254,8 @@ mod extended_tests {
     const TESTS_PBKDF_ROUNDS: u32 = 2;
 
     mod aes {
+        use crate::get_decrypter;
+
         use super::{get_encrypter, EncrypterState, TESTS_PBKDF_ROUNDS};
         use tracing::trace;
 
@@ -257,19 +289,18 @@ mod extended_tests {
             );
             enc.encrypt_in_place().unwrap();
             let encrypted_buf_cloned = enc.buffer().clone();
-            let _encrypted_buf = hex::encode(&enc.buffer());
+            let encrypted_buf = hex::encode(&enc.buffer());
             // let decoded_hex = hex::decode(encrypted_buf).unwrap();
 
             let (cipher, nonce) = enc.export_cipher_nonce();
 
-            let mut enc2 = get_encrypter(
-                EncrypterState::new("password", "salt"),
-                "plaintext message",
-                &TESTS_PBKDF_ROUNDS,
-            );
+            // let mut enc2 = get_encrypter(
+            //     EncrypterState::new("password", "salt"),
+            //     "plaintext message",
+            //     &TESTS_PBKDF_ROUNDS,
+            // );
 
-            enc2.import_cipher_nonce(cipher, nonce);
-            enc2.replace_buffer(encrypted_buf_cloned);
+            let mut enc2 = get_decrypter(encrypted_buf, cipher, nonce);
             enc2.decrypt_in_place().unwrap();
 
             assert_eq!(enc2.buffer().as_ref(), b"plaintext message");
@@ -293,7 +324,7 @@ mod extended_tests {
             );
 
             // Trigger failure but not importing the cipher and nonce
-            enc2.replace_buffer(encrypted_buf_cloned);
+            enc2._replace_buffer(encrypted_buf_cloned);
             enc2.decrypt_in_place().unwrap();
 
             assert_eq!(enc2.buffer().as_ref(), b"plaintext message");
