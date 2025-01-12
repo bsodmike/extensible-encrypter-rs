@@ -250,14 +250,11 @@ mod tests {
 
 #[cfg(test)]
 mod extended_tests {
-    use super::*;
     const TESTS_PBKDF_ROUNDS: u32 = 2;
 
     mod aes {
-        use crate::get_decrypter;
-
-        use super::{get_encrypter, EncrypterState, TESTS_PBKDF_ROUNDS};
-        use tracing::trace;
+        use super::TESTS_PBKDF_ROUNDS;
+        use crate::{get_decrypter, get_encrypter, EncrypterState};
 
         #[test]
         fn test_encrypt_and_decrypt() {
@@ -266,13 +263,14 @@ mod extended_tests {
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
             );
-            enc.encrypt_in_place().unwrap();
+
             // `buffer` now contains the message ciphertext
+            enc.encrypt_in_place().unwrap();
             // println!("Encrypted cipher text: {}", hex::encode(&enc.buffer()));
             assert_ne!(enc.buffer(), b"plaintext message");
 
             enc.decrypt_in_place().unwrap();
-            let m = enc.buffer().inner();
+            // let m = enc.buffer().inner();
             // println!(
             //     "Decrypted plaintext: {}",
             //     String::from_utf8(m.to_vec()).unwrap()
@@ -288,17 +286,8 @@ mod extended_tests {
                 &TESTS_PBKDF_ROUNDS,
             );
             enc.encrypt_in_place().unwrap();
-            let encrypted_buf_cloned = enc.buffer().clone();
             let encrypted_buf = hex::encode(&enc.buffer());
-            // let decoded_hex = hex::decode(encrypted_buf).unwrap();
-
             let (cipher, nonce) = enc.export_cipher_nonce();
-
-            // let mut enc2 = get_encrypter(
-            //     EncrypterState::new("password", "salt"),
-            //     "plaintext message",
-            //     &TESTS_PBKDF_ROUNDS,
-            // );
 
             let mut enc2 = get_decrypter(encrypted_buf, cipher, nonce);
             enc2.decrypt_in_place().unwrap();
