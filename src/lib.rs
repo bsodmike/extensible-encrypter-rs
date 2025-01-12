@@ -304,19 +304,17 @@ mod extended_tests {
                 &TESTS_PBKDF_ROUNDS,
             );
             enc.encrypt_in_place().unwrap();
-            let encrypted_buf_cloned = enc.buffer().clone();
+            let encrypted_buf = hex::encode(&enc.buffer());
+            let (cipher, _nonce) = enc.export_cipher_nonce();
 
-            let mut enc2 = get_encrypter(
-                EncrypterState::new("password", "salt"),
-                "plaintext message",
-                &TESTS_PBKDF_ROUNDS,
-            );
+            // Trigger failure with invalid nonce
+            let short_nonce = [0u8; 12];
+            let invalid_nonce: String = short_nonce.iter().map(|b| format!("{:02x}", b)).collect();
+            let mut decrypter = get_decrypter(encrypted_buf, cipher, invalid_nonce);
 
-            // Trigger failure but not importing the cipher and nonce
-            enc2._replace_buffer(encrypted_buf_cloned);
-            enc2.decrypt_in_place().unwrap();
+            decrypter.decrypt_in_place().unwrap();
 
-            assert_eq!(enc2.buffer().as_ref(), b"plaintext message");
+            assert_eq!(decrypter.buffer().as_ref(), b"plaintext message");
         }
     }
 }
