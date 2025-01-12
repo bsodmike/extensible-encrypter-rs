@@ -1,4 +1,9 @@
-use super::*;
+use super::error;
+use super::PrfHasher;
+use super::KEY_BUFF_SIZE;
+use hmac::{digest::core_api::CoreWrapper, EagerHash, Hmac, HmacCore, KeyInit};
+use pbkdf2::pbkdf2;
+use std::{fmt::Debug, marker::PhantomData};
 
 #[derive(Debug)]
 pub(crate) struct Encrypter<'a, S> {
@@ -29,4 +34,29 @@ impl<T> Encryptable for Encrypter<'_, T> {
 
         **self.key
     }
+}
+
+fn process_pbkdf_key<H>(
+    buf_ptr: &mut Box<[u8; KEY_BUFF_SIZE]>,
+    password: &str,
+    salt: &str,
+    pbkdf_rounds: &u32,
+) -> error::Result<()>
+where
+    CoreWrapper<HmacCore<H>>: KeyInit,
+    H: hmac::EagerHash,
+    <H as EagerHash>::Core: Sync,
+{
+    let buf = buf_ptr.as_mut();
+
+    pbkdf2::<Hmac<H>>(
+        &password.to_string().as_bytes(),
+        &salt.to_string().as_bytes(),
+        *pbkdf_rounds,
+        buf,
+        // fmt
+    )
+    .expect("HMAC can be initialized with any key length");
+
+    Ok(())
 }

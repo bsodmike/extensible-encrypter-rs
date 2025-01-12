@@ -1,10 +1,7 @@
 use crate::aes::AesEncrypter;
 use crate::error::DefaultError;
 use encrypter::{Encryptable, Encrypter};
-use hmac::{digest::core_api::CoreWrapper, EagerHash, Hmac, HmacCore, KeyInit};
-use pbkdf2::pbkdf2;
 use sha2::Sha512;
-use std::{fmt::Debug, marker::PhantomData};
 use tracing::trace;
 
 type PrfHasher = Sha512;
@@ -25,8 +22,8 @@ pub(crate) mod aes {
     use std::io::Read;
     use std::marker::PhantomData;
 
-    #[derive(Debug)]
-    /// FIXME: Allow swiching out the `A` array type.
+    #[derive(Debug, Clone)]
+    // A is a temporary generic, for future use.
     pub struct AesVecBuffer<'a, A> {
         inner: Vec<u8>,
         _life: PhantomData<&'a A>,
@@ -104,9 +101,22 @@ pub(crate) mod aes {
             }
         }
 
-        #[allow(dead_code)]
         pub fn buffer(&mut self) -> &mut AesVecBuffer<'a, ()> {
             &mut self.buffer
+        }
+
+        /// This replaces the underlying buffer and is a distrnuctive operation.  Use with care.
+        pub fn replace_buffer(&mut self, buffer: AesVecBuffer<'a, ()>) {
+            self.buffer = buffer;
+        }
+
+        pub fn import_cipher_nonce(&mut self, cipher: AesGcmSiv<aes::Aes256>, nonce: String) {
+            self.cipher = cipher;
+            self.nonce = nonce;
+        }
+
+        pub fn export_cipher_nonce(&self) -> (AesGcmSiv<aes::Aes256>, String) {
+            (self.cipher.clone(), self.nonce.clone())
         }
 
         pub fn encrypt_in_place(&mut self) -> crate::error::Result<()> {
@@ -138,11 +148,19 @@ pub(crate) mod aes {
 
             let nonce: &GenericArray<u8, cipher::consts::U12> = Nonce::from_slice(&short_nonce[..]); // 96-bits; unique per message
 
-            // Encrypt `buffer` in-place, replacing the plaintext contents with ciphertext
+            // Decrypt `buffer` in-place
             Ok(self
                 .cipher
                 .decrypt_in_place(nonce, b"", &mut self.buffer)
-                .expect("Decrypt cipher in place"))
+                .map_err(|err| -> crate::error::Result<()> {
+                    let err = format!(
+                        "[{}] Failed to decrypt due to {}. ",
+                        env!("CARGO_CRATE_NAME"),
+                        err.to_string(),
+                    );
+                    Err(crate::DefaultError::ErrorMessage(err))
+                })
+                .unwrap())
         }
     }
 }
@@ -160,7 +178,6 @@ pub fn get_encrypter<'a>(
     plaintext: &'a str,
     rounds: &'a u32,
 ) -> AesEncrypter<'a> {
-    // Create pbkdf
     let buf = [0u8; 20];
     let mut buf_boxed = Box::new(buf);
     let mut encrypter = Encrypter::<()>::new(&mut buf_boxed);
@@ -169,31 +186,6 @@ pub fn get_encrypter<'a>(
     trace!("Key: {}", &pbkdf_key_hex);
 
     AesEncrypter::new(pbkdf_key_hex.clone(), plaintext)
-}
-
-fn process_pbkdf_key<H>(
-    buf_ptr: &mut Box<[u8; KEY_BUFF_SIZE]>,
-    password: &str,
-    salt: &str,
-    pbkdf_rounds: &u32,
-) -> error::Result<()>
-where
-    CoreWrapper<HmacCore<H>>: KeyInit,
-    H: hmac::EagerHash,
-    <H as EagerHash>::Core: Sync,
-{
-    let buf = buf_ptr.as_mut();
-
-    pbkdf2::<Hmac<H>>(
-        &password.to_string().as_bytes(),
-        &salt.to_string().as_bytes(),
-        *pbkdf_rounds,
-        buf,
-        // fmt
-    )
-    .expect("HMAC can be initialized with any key length");
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -244,46 +236,67 @@ mod extended_tests {
             );
             enc.encrypt_in_place().unwrap();
             // `buffer` now contains the message ciphertext
-            trace!("Encrypted cipher text: {}", hex::encode(&enc.buffer()));
+            // println!("Encrypted cipher text: {}", hex::encode(&enc.buffer()));
             assert_ne!(enc.buffer(), b"plaintext message");
 
-            // Decrypt `buffer` in-place, replacing its ciphertext context with the original plaintext
             enc.decrypt_in_place().unwrap();
             let m = enc.buffer().inner();
-            trace!(
-                "Decrypted plaintext: {}",
-                String::from_utf8(m.to_vec()).unwrap()
-            );
+            // println!(
+            //     "Decrypted plaintext: {}",
+            //     String::from_utf8(m.to_vec()).unwrap()
+            // );
             assert_eq!(enc.buffer().as_ref(), b"plaintext message");
         }
 
-        #[should_panic]
         #[test]
-        fn test_encrypt_and_decrypt_bad_salt() {
+        fn test_decrypt_with_imported_cipher_nonce() {
             let mut enc = get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
             );
             enc.encrypt_in_place().unwrap();
-            // `buffer` now contains the message ciphertext
-            trace!("Encrypted cipher text: {}", hex::encode(&enc.buffer()));
-            assert_ne!(enc.buffer(), b"plaintext message");
+            let encrypted_buf_cloned = enc.buffer().clone();
+            let _encrypted_buf = hex::encode(&enc.buffer());
+            // let decoded_hex = hex::decode(encrypted_buf).unwrap();
 
-            let mut enc_naughty = get_encrypter(
-                EncrypterState::new("password", "salt2"),
+            let (cipher, nonce) = enc.export_cipher_nonce();
+
+            let mut enc2 = get_encrypter(
+                EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
             );
 
-            // Decrypt `buffer` in-place, replacing its ciphertext context with the original plaintext
-            enc_naughty.decrypt_in_place().unwrap();
-            let m = enc.buffer().inner();
-            trace!(
-                "Decrypted plaintext: {}",
-                String::from_utf8(m.to_vec()).unwrap()
+            enc2.import_cipher_nonce(cipher, nonce);
+            enc2.replace_buffer(encrypted_buf_cloned);
+            enc2.decrypt_in_place().unwrap();
+
+            assert_eq!(enc2.buffer().as_ref(), b"plaintext message");
+        }
+
+        #[should_panic(expected = "[pbkdf_encrypt_core] Failed to decrypt due to aead::Error.")]
+        #[test]
+        fn test_decrypt_invalid_cipher() {
+            let mut enc = get_encrypter(
+                EncrypterState::new("password", "salt"),
+                "plaintext message",
+                &TESTS_PBKDF_ROUNDS,
             );
-            assert_eq!(enc_naughty.buffer().as_ref(), b"plaintext message");
+            enc.encrypt_in_place().unwrap();
+            let encrypted_buf_cloned = enc.buffer().clone();
+
+            let mut enc2 = get_encrypter(
+                EncrypterState::new("password", "salt"),
+                "plaintext message",
+                &TESTS_PBKDF_ROUNDS,
+            );
+
+            // Trigger failure but not importing the cipher and nonce
+            enc2.replace_buffer(encrypted_buf_cloned);
+            enc2.decrypt_in_place().unwrap();
+
+            assert_eq!(enc2.buffer().as_ref(), b"plaintext message");
         }
     }
 }
