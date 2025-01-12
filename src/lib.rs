@@ -1,5 +1,5 @@
 use crate::aes::AesEncrypter;
-use anyhow::Context;
+use crate::error::DefaultError;
 use encrypter::{Encryptable, Encrypter};
 use hmac::{digest::core_api::CoreWrapper, EagerHash, Hmac, HmacCore, KeyInit};
 use pbkdf2::pbkdf2;
@@ -11,6 +11,7 @@ type PrfHasher = Sha512;
 const KEY_BUFF_SIZE: usize = 20;
 
 pub mod encrypter;
+pub mod error;
 
 pub(crate) mod aes {
     use aes::cipher;
@@ -108,7 +109,7 @@ pub(crate) mod aes {
             &mut self.buffer
         }
 
-        pub fn encrypt_in_place(&mut self) -> anyhow::Result<()> {
+        pub fn encrypt_in_place(&mut self) -> crate::error::Result<()> {
             let mut bytes = self.nonce.as_bytes();
             let mut short_nonce = [0u8; 12];
             bytes.read_exact(&mut short_nonce)?;
@@ -119,17 +120,18 @@ pub(crate) mod aes {
             Ok(self
                 .cipher
                 .encrypt_in_place(nonce, b"", &mut self.buffer)
-                .map_err(|err| -> Result<(), anyhow::Error> {
-                    anyhow::bail!(
+                .map_err(|err| -> crate::error::Result<()> {
+                    let err = format!(
                         "[{}] Failed to encrypt due to {}.",
                         env!("CARGO_CRATE_NAME"),
                         err.to_string(),
                     );
+                    Err(crate::DefaultError::ErrorMessage(err))
                 })
                 .expect("Encrypt cipher in place"))
         }
 
-        pub fn decrypt_in_place(&mut self) -> anyhow::Result<()> {
+        pub fn decrypt_in_place(&mut self) -> crate::error::Result<()> {
             let mut bytes = self.nonce.as_bytes();
             let mut short_nonce = [0u8; 12];
             bytes.read_exact(&mut short_nonce)?;
@@ -174,7 +176,7 @@ fn process_pbkdf_key<H>(
     password: &str,
     salt: &str,
     pbkdf_rounds: &u32,
-) -> anyhow::Result<()>
+) -> error::Result<()>
 where
     CoreWrapper<HmacCore<H>>: KeyInit,
     H: hmac::EagerHash,
@@ -189,7 +191,7 @@ where
         buf,
         // fmt
     )
-    .context("HMAC can be initialized with any key length")?;
+    .expect("HMAC can be initialized with any key length");
 
     Ok(())
 }
