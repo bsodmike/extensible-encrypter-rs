@@ -1,7 +1,8 @@
 use crate::aes::AesEncrypter;
 use crate::error::DefaultError;
 use aes_gcm_siv::AesGcmSiv;
-use encrypter::{Encryptable, Encrypter};
+use encrypter::{Encryptable, Encrypter as PrivateEncrypter};
+use prelude::AesEncrypt;
 use sha2::Sha512;
 use tracing::trace;
 
@@ -10,6 +11,9 @@ const KEY_BUFF_SIZE: usize = 20;
 
 pub mod encrypter;
 pub mod error;
+pub mod prelude {
+    pub use crate::aes::AesEncrypt;
+}
 
 pub(crate) mod aes {
     use aes::cipher;
@@ -127,14 +131,9 @@ pub(crate) mod aes {
             &mut self.buffer
         }
 
-        /// This replaces the underlying buffer and is a distrnuctive operation.  Use with care.
+        /// This replaces the underlying buffer and is a distructive operation.  Use with care.
         pub fn _replace_buffer(&mut self, buffer: AesVecBuffer<'a, ()>) {
             self.buffer = buffer;
-        }
-
-        pub fn import_cipher_nonce(&mut self, cipher: AesGcmSiv<aes::Aes256>, nonce: String) {
-            self.cipher = cipher;
-            self.nonce = nonce;
         }
 
         pub fn export_cipher_nonce(&self) -> (AesGcmSiv<aes::Aes256>, String) {
@@ -185,6 +184,33 @@ pub(crate) mod aes {
                 .unwrap())
         }
     }
+
+    pub trait AesEncrypt {
+        fn buffer(&mut self) -> Vec<u8>;
+        fn decrypt_in_place(&mut self) -> crate::error::Result<()>;
+        fn encrypt_in_place(&mut self) -> crate::error::Result<()>;
+        fn export_cipher_nonce(&self) -> (AesGcmSiv<::aes::Aes256>, String);
+    }
+
+    impl<'a> AesEncrypt for AesEncrypter<'a> {
+        fn buffer(&mut self) -> Vec<u8> {
+            let buf = AesEncrypter::buffer(self);
+
+            buf.inner().to_vec()
+        }
+
+        fn decrypt_in_place(&mut self) -> crate::error::Result<()> {
+            AesEncrypter::decrypt_in_place(self)
+        }
+
+        fn encrypt_in_place(&mut self) -> crate::error::Result<()> {
+            AesEncrypter::encrypt_in_place(self)
+        }
+
+        fn export_cipher_nonce(&self) -> (AesGcmSiv<::aes::Aes256>, String) {
+            AesEncrypter::export_cipher_nonce(self)
+        }
+    }
 }
 
 pub struct EncrypterState<'a>(&'a str, &'a str);
@@ -195,27 +221,31 @@ impl<'a> EncrypterState<'a> {
     }
 }
 
-pub fn get_encrypter<'a>(
-    state: EncrypterState<'a>,
-    plaintext: &'a str,
-    rounds: &'a u32,
-) -> AesEncrypter<'a> {
-    let buf = [0u8; 20];
-    let mut buf_boxed = Box::new(buf);
-    let mut encrypter = Encrypter::<()>::new(&mut buf_boxed);
-    let pbkdf_key = encrypter.pbkdf_key(state.0, state.1, rounds);
-    let pbkdf_key_hex = hex::encode(pbkdf_key);
-    trace!("Key: {}", &pbkdf_key_hex);
+pub struct Encrypter {}
 
-    AesEncrypter::new(pbkdf_key_hex.clone(), plaintext)
-}
+impl Encrypter {
+    pub fn get_encrypter<'a>(
+        state: EncrypterState<'a>,
+        plaintext: &'a str,
+        rounds: &'a u32,
+    ) -> impl AesEncrypt + use<'a> {
+        let buf = [0u8; 20];
+        let mut buf_boxed = Box::new(buf);
+        let mut encrypter = PrivateEncrypter::<()>::new(&mut buf_boxed);
+        let pbkdf_key = encrypter.pbkdf_key(state.0, state.1, rounds);
+        let pbkdf_key_hex = hex::encode(pbkdf_key);
+        trace!("Key: {}", &pbkdf_key_hex);
 
-pub fn get_decrypter<'a>(
-    encrypted_hex: String,
-    cipher: AesGcmSiv<::aes::Aes256>,
-    nonce: String,
-) -> AesEncrypter<'a> {
-    AesEncrypter::decryptable(encrypted_hex, cipher, nonce)
+        AesEncrypter::new(pbkdf_key_hex.clone(), plaintext)
+    }
+
+    pub fn get_decrypter<'a>(
+        encrypted_hex: String,
+        cipher: AesGcmSiv<::aes::Aes256>,
+        nonce: String,
+    ) -> impl AesEncrypt + use<'a> {
+        AesEncrypter::decryptable(encrypted_hex, cipher, nonce)
+    }
 }
 
 #[cfg(test)]
@@ -229,7 +259,7 @@ mod tests {
         let buf = [0u8; KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
-        let mut encrypter = Encrypter::<()>::new(&mut buf_boxed);
+        let mut encrypter = PrivateEncrypter::<()>::new(&mut buf_boxed);
         let pbkdf_key1 = encrypter.pbkdf_key(
             // RA
             "password",
@@ -254,11 +284,13 @@ mod extended_tests {
 
     mod aes {
         use super::TESTS_PBKDF_ROUNDS;
-        use crate::{get_decrypter, get_encrypter, EncrypterState};
+        use crate::aes::AesEncrypt;
+        use crate::Encrypter;
+        use crate::EncrypterState;
 
         #[test]
         fn test_encrypt_and_decrypt() {
-            let mut enc = get_encrypter(
+            let mut enc = Encrypter::get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
@@ -275,12 +307,12 @@ mod extended_tests {
             //     "Decrypted plaintext: {}",
             //     String::from_utf8(m.to_vec()).unwrap()
             // );
-            assert_eq!(enc.buffer().as_ref(), b"plaintext message");
+            assert_eq!(enc.buffer(), b"plaintext message");
         }
 
         #[test]
         fn test_decrypt_with_imported_cipher_nonce() {
-            let mut enc = get_encrypter(
+            let mut enc = Encrypter::get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
@@ -289,16 +321,16 @@ mod extended_tests {
             let encrypted_buf = hex::encode(&enc.buffer());
             let (cipher, nonce) = enc.export_cipher_nonce();
 
-            let mut enc2 = get_decrypter(encrypted_buf, cipher, nonce);
+            let mut enc2 = Encrypter::get_decrypter(encrypted_buf, cipher, nonce);
             enc2.decrypt_in_place().unwrap();
 
-            assert_eq!(enc2.buffer().as_ref(), b"plaintext message");
+            assert_eq!(enc2.buffer(), b"plaintext message");
         }
 
         #[should_panic(expected = "[pbkdf_encrypt_core] Failed to decrypt due to aead::Error.")]
         #[test]
         fn test_decrypt_invalid_cipher() {
-            let mut enc = get_encrypter(
+            let mut enc = Encrypter::get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
@@ -310,11 +342,11 @@ mod extended_tests {
             // Trigger failure with invalid nonce
             let short_nonce = [0u8; 12];
             let invalid_nonce: String = short_nonce.iter().map(|b| format!("{:02x}", b)).collect();
-            let mut decrypter = get_decrypter(encrypted_buf, cipher, invalid_nonce);
+            let mut decrypter = Encrypter::get_decrypter(encrypted_buf, cipher, invalid_nonce);
 
             decrypter.decrypt_in_place().unwrap();
 
-            assert_eq!(decrypter.buffer().as_ref(), b"plaintext message");
+            assert_eq!(decrypter.buffer(), b"plaintext message");
         }
     }
 }
