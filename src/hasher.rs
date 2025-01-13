@@ -60,3 +60,31 @@ where {
         Ok(*self.key.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Hashable;
+    use hex_literal::hex;
+
+    #[test]
+    fn generate_pbkdf2_key() {
+        const PBKDF_ROUNDS: u32 = 2;
+        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
+        let mut buf_boxed = Box::new(buf);
+
+        let hasher =
+            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let pbkdf_key = hasher
+            .pbkdf2_gen("password", "salt", &PBKDF_ROUNDS)
+            .unwrap();
+
+        // NOTE: Compute hex string for the number of rounds provided above; this affects the pbkdf key
+        // and the test will fail if the number of rounds are changed.
+        // let pbkdf_key_hex = hex::encode(pbkdf_key);
+
+        assert_eq!(
+            &pbkdf_key,
+            &hex!("e1d9c16aa681708a45f5c7c4e215ceb66e011a2e")
+        );
+    }
+}

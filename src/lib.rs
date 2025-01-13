@@ -218,9 +218,10 @@ impl<'a> EncrypterState<'a> {
     }
 }
 
-pub struct Encrypter {}
+// FIXME: this is to be revised
+pub struct TempEncrypter {}
 
-impl Encrypter {
+impl TempEncrypter {
     pub fn get_encrypter<'a>(
         state: EncrypterState<'a>,
         plaintext: &'a str,
@@ -229,16 +230,9 @@ impl Encrypter {
         let buf = [0u8; 20];
         let mut buf_boxed = Box::new(buf);
 
-        let hasher = &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(
-            &mut buf_boxed,
-        );
-        let pbkdf_key = hasher
-            .pbkdf2_gen(
-                state.0,
-                state.1,
-                rounds,
-            )
-            .unwrap();
+        let hasher =
+            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let pbkdf_key = hasher.pbkdf2_gen(state.0, state.1, rounds).unwrap();
 
         let pbkdf_key_hex = hex::encode(pbkdf_key);
         trace!("Key: {}", &pbkdf_key_hex);
@@ -255,40 +249,7 @@ impl Encrypter {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use hex_literal::hex;
 
-    #[test]
-    fn get_pbkdf_key() {
-        const PBKDF_ROUNDS: u32 = 2;
-        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
-        let mut buf_boxed = Box::new(buf);
-
-        let hasher = &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(
-            &mut buf_boxed,
-        );
-        let pbkdf_key = hasher
-            .pbkdf2_gen(
-                "password",
-                "salt",
-                &PBKDF_ROUNDS,
-            )
-            .unwrap();
-
-        let _pbkdf_key_hex = hex::encode(pbkdf_key);
-
-        // NOTE: Compute hex string for the number of rounds provided above; this affects the pbkdf key
-        // and the test will fail if the number of rounds are changed.
-        // let hex_string = hex::encode(pbkdf_key1);
-
-        assert_eq!(
-            &pbkdf_key,
-            &hex!("e1d9c16aa681708a45f5c7c4e215ceb66e011a2e")
-        );
-    }
-}
 
 #[cfg(test)]
 mod extended_tests {
@@ -297,12 +258,12 @@ mod extended_tests {
     mod aes {
         use super::TESTS_PBKDF_ROUNDS;
         use crate::aes::AesEncrypt;
-        use crate::Encrypter;
         use crate::EncrypterState;
+        use crate::TempEncrypter;
 
         #[test]
         fn test_encrypt_and_decrypt() {
-            let mut enc = Encrypter::get_encrypter(
+            let mut enc = TempEncrypter::get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
@@ -324,7 +285,7 @@ mod extended_tests {
 
         #[test]
         fn test_decrypt_with_imported_cipher_nonce() {
-            let mut enc = Encrypter::get_encrypter(
+            let mut enc = TempEncrypter::get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
@@ -333,7 +294,7 @@ mod extended_tests {
             let encrypted_buf = hex::encode(&enc.buffer());
             let (cipher, nonce) = enc.export_cipher_nonce();
 
-            let mut enc2 = Encrypter::get_decrypter(encrypted_buf, cipher, nonce);
+            let mut enc2 = TempEncrypter::get_decrypter(encrypted_buf, cipher, nonce);
             enc2.decrypt_in_place().unwrap();
 
             assert_eq!(enc2.buffer(), b"plaintext message");
@@ -342,7 +303,7 @@ mod extended_tests {
         #[should_panic(expected = "[pbkdf_encrypt_core] Failed to decrypt due to aead::Error.")]
         #[test]
         fn test_decrypt_invalid_cipher() {
-            let mut enc = Encrypter::get_encrypter(
+            let mut enc = TempEncrypter::get_encrypter(
                 EncrypterState::new("password", "salt"),
                 "plaintext message",
                 &TESTS_PBKDF_ROUNDS,
@@ -354,7 +315,7 @@ mod extended_tests {
             // Trigger failure with invalid nonce
             let short_nonce = [0u8; 12];
             let invalid_nonce: String = short_nonce.iter().map(|b| format!("{:02x}", b)).collect();
-            let mut decrypter = Encrypter::get_decrypter(encrypted_buf, cipher, invalid_nonce);
+            let mut decrypter = TempEncrypter::get_decrypter(encrypted_buf, cipher, invalid_nonce);
 
             decrypter.decrypt_in_place().unwrap();
 
