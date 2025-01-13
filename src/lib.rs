@@ -249,8 +249,6 @@ impl TempEncrypter {
     }
 }
 
-
-
 #[cfg(test)]
 mod extended_tests {
     const TESTS_PBKDF_ROUNDS: u32 = 2;
