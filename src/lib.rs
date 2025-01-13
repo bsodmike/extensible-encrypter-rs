@@ -229,7 +229,7 @@ impl Encrypter {
         let buf = [0u8; 20];
         let mut buf_boxed = Box::new(buf);
 
-        let hasher = &mut crate::hasher::HashProvider::new(
+        let hasher = &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(
             &mut buf_boxed,
         );
         let pbkdf_key = hasher
@@ -237,7 +237,6 @@ impl Encrypter {
                 state.0,
                 state.1,
                 rounds,
-                crate::hasher::PrfHasher::default(),
             )
             .unwrap();
 
@@ -267,7 +266,7 @@ mod tests {
         let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
-        let hasher = &mut crate::hasher::HashProvider::new(
+        let hasher = &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(
             &mut buf_boxed,
         );
         let pbkdf_key = hasher
@@ -275,7 +274,6 @@ mod tests {
                 "password",
                 "salt",
                 &PBKDF_ROUNDS,
-                crate::hasher::PrfHasher::default(),
             )
             .unwrap();
 

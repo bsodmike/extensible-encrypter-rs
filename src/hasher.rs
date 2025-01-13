@@ -1,5 +1,5 @@
 use crate::error;
-use hmac::{digest::core_api::CoreWrapper, EagerHash, Hmac, HmacCore, KeyInit};
+use hmac::{digest::core_api::CoreWrapper, EagerHash, Hmac, HmacCore};
 use pbkdf2::pbkdf2;
 use sha2::Sha512;
 use std::{fmt::Debug, marker::PhantomData};
@@ -15,10 +15,10 @@ pub trait Hashable<H> {
         password: &str,
         salt: &str,
         rounds: &u32,
-        hasher: H,
     ) -> error::Result<Self::KeyBuf>;
 }
 
+#[derive(Debug)]
 pub struct HashProvider<'a, H> {
     _hasher: PhantomData<H>,
     key: &'a mut Box<[u8; KEY_BUFF_SIZE]>,
@@ -46,7 +46,6 @@ where
         password: &str,
         salt: &str,
         rounds: &u32,
-        _hasher: H,
     ) -> error::Result<Self::KeyBuf>
 where {
         pbkdf2::<Hmac<H>>(
