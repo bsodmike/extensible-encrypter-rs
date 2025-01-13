@@ -1,16 +1,13 @@
 use crate::aes::AesEncrypter;
 use crate::error::DefaultError;
+use crate::hasher::Hashable;
 use aes_gcm_siv::AesGcmSiv;
-use encrypter::{Encryptable, Encrypter as PrivateEncrypter};
 use prelude::AesEncrypt;
-use sha2::Sha512;
 use tracing::trace;
-
-type PrfHasher = Sha512;
-const KEY_BUFF_SIZE: usize = 20;
 
 pub mod encrypter;
 pub mod error;
+pub mod hasher;
 pub mod prelude {
     pub use crate::aes::AesEncrypt;
 }
@@ -231,8 +228,20 @@ impl Encrypter {
     ) -> impl AesEncrypt + use<'a> {
         let buf = [0u8; 20];
         let mut buf_boxed = Box::new(buf);
-        let mut encrypter = PrivateEncrypter::<()>::new(&mut buf_boxed);
-        let pbkdf_key = encrypter.pbkdf_key(state.0, state.1, rounds);
+
+        let hasher = &mut crate::hasher::HashProvider::new(
+            &mut buf_boxed,
+            crate::hasher::PrfHasher::default(),
+        );
+        let pbkdf_key = hasher
+            .pbkdf2_gen(
+                state.0,
+                state.1,
+                rounds,
+                crate::hasher::PrfHasher::default(),
+            )
+            .unwrap();
+
         let pbkdf_key_hex = hex::encode(pbkdf_key);
         trace!("Key: {}", &pbkdf_key_hex);
 
@@ -256,23 +265,30 @@ mod tests {
     #[test]
     fn get_pbkdf_key() {
         const PBKDF_ROUNDS: u32 = 2;
-        let buf = [0u8; KEY_BUFF_SIZE];
+        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
-        let mut encrypter = PrivateEncrypter::<()>::new(&mut buf_boxed);
-        let pbkdf_key1 = encrypter.pbkdf_key(
-            // RA
-            "password",
-            "salt",
-            &PBKDF_ROUNDS,
+        let hasher = &mut crate::hasher::HashProvider::new(
+            &mut buf_boxed,
+            crate::hasher::PrfHasher::default(),
         );
+        let pbkdf_key = hasher
+            .pbkdf2_gen(
+                "password",
+                "salt",
+                &PBKDF_ROUNDS,
+                crate::hasher::PrfHasher::default(),
+            )
+            .unwrap();
+
+        let _pbkdf_key_hex = hex::encode(pbkdf_key);
 
         // NOTE: Compute hex string for the number of rounds provided above; this affects the pbkdf key
         // and the test will fail if the number of rounds are changed.
         // let hex_string = hex::encode(pbkdf_key1);
 
         assert_eq!(
-            &pbkdf_key1,
+            &pbkdf_key,
             &hex!("e1d9c16aa681708a45f5c7c4e215ceb66e011a2e")
         );
     }
