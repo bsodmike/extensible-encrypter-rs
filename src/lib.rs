@@ -231,7 +231,6 @@ impl Encrypter {
 
         let hasher = &mut crate::hasher::HashProvider::new(
             &mut buf_boxed,
-            crate::hasher::PrfHasher::default(),
         );
         let pbkdf_key = hasher
             .pbkdf2_gen(
@@ -270,7 +269,6 @@ mod tests {
 
         let hasher = &mut crate::hasher::HashProvider::new(
             &mut buf_boxed,
-            crate::hasher::PrfHasher::default(),
         );
         let pbkdf_key = hasher
             .pbkdf2_gen(

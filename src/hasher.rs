@@ -20,14 +20,14 @@ pub trait Hashable<H> {
 }
 
 pub struct HashProvider<'a, H> {
-    hasher: H,
+    _hasher: PhantomData<H>,
     key: &'a mut Box<[u8; KEY_BUFF_SIZE]>,
 }
 
 impl<'a, H> HashProvider<'a, H> {
-    pub fn new(buf: &'a mut Box<[u8; KEY_BUFF_SIZE]>, hasher: H) -> Self {
+    pub fn new(buf: &'a mut Box<[u8; KEY_BUFF_SIZE]>) -> Self {
         Self {
-            hasher: hasher,
+            _hasher: PhantomData,
             key: buf,
         }
     }
