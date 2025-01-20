@@ -32,6 +32,13 @@ pub(crate) mod aes {
     }
 
     impl<'a, A> AesVecBuffer<'a, A> {
+        pub fn new() -> Self {
+            Self {
+                inner: Vec::new(),
+                _life: PhantomData,
+            }
+        }
+
         pub fn inner(&mut self) -> &mut Vec<u8> {
             &mut self.inner
         }
