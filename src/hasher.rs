@@ -5,7 +5,7 @@ use sha2::Sha512;
 use std::{fmt::Debug, marker::PhantomData};
 
 pub type PrfHasher = Sha512;
-pub const KEY_BUFF_SIZE: usize = 20;
+pub const KEY_BUFF_SIZE: usize = 32;
 
 pub trait Hashable<H> {
     type KeyBuf;
@@ -81,10 +81,11 @@ mod tests {
         // NOTE: Compute hex string for the number of rounds provided above; this affects the pbkdf key
         // and the test will fail if the number of rounds are changed.
         // let pbkdf_key_hex = hex::encode(pbkdf_key);
+        // assert_eq!(pbkdf_key_hex, "");
 
         assert_eq!(
             &pbkdf_key,
-            &hex!("e1d9c16aa681708a45f5c7c4e215ceb66e011a2e")
+            &hex!("e1d9c16aa681708a45f5c7c4e215ceb66e011a2e9f0040713f18aefdb866d53c")
         );
     }
 }

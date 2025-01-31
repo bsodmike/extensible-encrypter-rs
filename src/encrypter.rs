@@ -146,7 +146,10 @@ mod encryptable {
     use super::Encryptable;
     use super::EncrypterConfig;
     use crate::encrypter::AesEncryptionProvide;
+    use crate::encrypter::OsRng;
     use crate::hasher::Hashable;
+    use aes_gcm_siv::Aes256GcmSiv;
+    use aes_gcm_siv::KeyInit;
     use hex_literal::hex;
 
     use prettytable::row;
@@ -179,15 +182,18 @@ mod encryptable {
     fn test_decryption() {
         let mut table = Table::new();
 
-        const PBKDF_ROUNDS: u32 = 2;
+        const PBKDF_ROUNDS: u32 = 20;
         let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
         let input_plaintext = "secret nuke codes go inside the football";
 
+        let salt_rng = Aes256GcmSiv::generate_key(&mut OsRng);
+        let salt = hex::encode(salt_rng);
+
         let hasher =
             &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
         let pbkdf_key = hasher
-            .pbkdf2_gen("password", "salt", &PBKDF_ROUNDS)
+            .pbkdf2_gen("password", salt.as_str(), &PBKDF_ROUNDS)
             .unwrap();
         let pbkdf_key_hex = hex::encode(pbkdf_key);
 
@@ -197,9 +203,15 @@ mod encryptable {
         let mut provider = AesEncryptionProvide::new();
         let mut enc = super::Encrypter::<AesEncryptionProvide>::new(config.clone());
         let ciphertext = enc.encrypt(&input_plaintext, &mut provider);
-        table.add_row(row!["Ciphertext", ciphertext]);
-        table.add_row(row!["PBKDF Key (Hex)", pbkdf_key_hex]);
+
+        let nonce = hex::encode(config.cipher.nonce);
+        let pbkdf_key_details = format!("PBKDF2 / SHA-512 with {} rounds", PBKDF_ROUNDS);
+
+        table.add_row(row![pbkdf_key_details.as_str(), pbkdf_key_hex]);
+        table.add_row(row!["Salt", salt]);
         table.add_row(row!["AES Key", config.aes_key]);
+        table.add_row(row!["Nonce", nonce]);
+        table.add_row(row!["Ciphertext", ciphertext]);
 
         // Perform decrypt
         let key = config.aes_key.clone();

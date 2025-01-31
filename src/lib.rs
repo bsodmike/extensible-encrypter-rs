@@ -234,7 +234,7 @@ impl TempEncrypter {
         plaintext: &'a str,
         rounds: &'a u32,
     ) -> impl AesEncrypt + use<'a> {
-        let buf = [0u8; 20];
+        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
         let hasher =
