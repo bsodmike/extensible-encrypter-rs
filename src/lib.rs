@@ -12,7 +12,7 @@ pub mod prelude {
     pub use crate::aes::AesEncrypt;
 }
 
-pub(crate) mod aes {
+pub mod aes {
     use aes::cipher;
     use aes::cipher::generic_array::GenericArray;
     use aes_gcm_siv::aead::Buffer;

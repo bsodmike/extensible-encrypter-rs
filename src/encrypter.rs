@@ -28,7 +28,7 @@ impl<EP> Encrypter<EP> {
 
 pub trait Encryptable<EncryptionProvider> {
     fn encrypt(&mut self, input: &str, provider: &mut EncryptionProvider) -> String;
-    fn decrypt(&mut self, input: &str) -> String;
+    fn decrypt(&mut self, ciphertext: &str, provider: &mut EncryptionProvider) -> String;
 }
 
 impl<EncryptionProvider> Encryptable<EncryptionProvider> for Encrypter<EncryptionProvider>
@@ -42,13 +42,17 @@ where
 
         provider.perform_encryption(plain_text, cipher)
     }
-    fn decrypt(&mut self, input: &str) -> String {
-        "".to_string()
+    fn decrypt(&mut self, ciphertext: &str, provider: &mut EncryptionProvider) -> String {
+        let config = &self.config;
+        let cipher = &config.cipher;
+
+        provider.perform_decryption(ciphertext, cipher)
     }
 }
 
 pub trait AesEncryptionProviderTrait {
     fn perform_encryption(&mut self, plain_text: &str, cipher: &AesCipher) -> String;
+    fn perform_decryption(&mut self, ciphertext: &str, cipher: &AesCipher) -> String;
 }
 
 pub struct AesEncryptionProvide<'a> {
@@ -93,10 +97,38 @@ impl<'a> AesEncryptionProviderTrait for AesEncryptionProvide<'a> {
 
         self.ciphertext_hex()
     }
+
+    fn perform_decryption(&mut self, ciphertext: &str, cipher: &AesCipher) -> String {
+        let (cipher, nonce) = (&cipher.cipher, &cipher.nonce);
+
+        // FIXME: clean up
+        let decoded = hex::decode(ciphertext).unwrap();
+        let x = aes::AesVecBuffer::<()>::from_vec(decoded);
+
+        // Note: buffer needs 16-bytes overhead for auth tag tag
+        self.buffer = x;
+
+        cipher
+            .decrypt_in_place(nonce, b"", &mut self.buffer)
+            .map_err(|err| -> crate::error::Result<()> {
+                let err = format!(
+                    "[{}] Failed to decrypt due to {}.",
+                    env!("CARGO_CRATE_NAME"),
+                    err.to_string(),
+                );
+                Err(crate::DefaultError::ErrorMessage(err))
+            })
+            .expect("Decrypt cipher in place");
+
+        // FIXME: This needs renaming as it is the decrypted text
+        self.ciphertext_hex()
+    }
 }
 
 #[cfg(test)]
 mod encryptable {
+    use hex_literal::hex;
+
     use super::Encryptable;
     use super::EncrypterConfig;
     use crate::encrypter::AesEncryptionProvide;
@@ -124,8 +156,44 @@ mod encryptable {
 
         assert_ne!(r, "")
     }
+
+    #[test]
+    fn test_decryption() {
+        const PBKDF_ROUNDS: u32 = 2;
+        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
+        let mut buf_boxed = Box::new(buf);
+
+        let hasher =
+            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let pbkdf_key = hasher
+            .pbkdf2_gen("password", "salt", &PBKDF_ROUNDS)
+            .unwrap();
+        let pbkdf_key_hex = hex::encode(pbkdf_key);
+
+        let config = EncrypterConfig::new(pbkdf_key_hex);
+
+        // Create Encrypter
+        let mut provider = AesEncryptionProvide::new();
+        let mut enc = super::Encrypter::<AesEncryptionProvide>::new(config.clone());
+        let r = enc.encrypt("secret nuke codes go inside the football", &mut provider);
+
+        // FIXME: Needs better API
+        let ciphertext = provider.ciphertext_hex();
+        println!("Ciphertext: {}", ciphertext);
+
+        // let mut provider = AesEncryptionProvide::new();
+        // let mut enc = super::Encrypter::<AesEncryptionProvide>::new(config);
+        let r = enc.decrypt(&ciphertext, &mut provider);
+
+        // Magic
+        let decoded = hex::decode(r).unwrap();
+        let r = String::from_utf8(decoded).unwrap();
+
+        assert_eq!(r, "secret nuke codes go inside the football")
+    }
 }
 
+#[derive(Clone)]
 pub struct EncrypterConfig {
     pub hash_key: String,
     pub cipher: AesCipher,
@@ -176,8 +244,9 @@ mod tests {
 }
 
 pub mod aes {
-    use super::*;
+    pub use super::*;
 
+    #[derive(Clone)]
     pub struct AesCipher {
         pub cipher: AesGcmSiv<::aes::Aes256>,
         pub nonce: GenericArray<u8, cipher::consts::U12>,
