@@ -1,4 +1,4 @@
-// use super::error;
+use super::error;
 use crate::aes::AesVecBuffer;
 use ::aes::cipher;
 use ::aes::cipher::generic_array::GenericArray;
@@ -28,7 +28,11 @@ impl<EP> Encrypter<EP> {
 
 pub trait Encryptable<EncryptionProvider> {
     fn encrypt(&mut self, input: &str, provider: &mut EncryptionProvider) -> String;
-    fn decrypt(&mut self, ciphertext: &str, provider: &mut EncryptionProvider) -> String;
+    fn decrypt(
+        &mut self,
+        ciphertext: &str,
+        provider: &mut EncryptionProvider,
+    ) -> error::Result<String>;
 }
 
 impl<EncryptionProvider> Encryptable<EncryptionProvider> for Encrypter<EncryptionProvider>
@@ -42,7 +46,11 @@ where
 
         provider.perform_encryption(plain_text, cipher)
     }
-    fn decrypt(&mut self, ciphertext: &str, provider: &mut EncryptionProvider) -> String {
+    fn decrypt(
+        &mut self,
+        ciphertext: &str,
+        provider: &mut EncryptionProvider,
+    ) -> error::Result<String> {
         let config = &self.config;
         let cipher = &config.cipher;
 
@@ -52,7 +60,8 @@ where
 
 pub trait AesEncryptionProviderTrait {
     fn perform_encryption(&mut self, plain_text: &str, cipher: &AesCipher) -> String;
-    fn perform_decryption(&mut self, ciphertext: &str, cipher: &AesCipher) -> String;
+    fn perform_decryption(&mut self, ciphertext: &str, cipher: &AesCipher)
+        -> error::Result<String>;
 }
 
 pub struct AesEncryptionProvide<'a> {
@@ -71,6 +80,13 @@ impl<'a> AesEncryptionProvide<'a> {
         let text = hex::encode(self.buffer.inner().to_vec());
 
         text
+    }
+
+    /// Decoded plaintext
+    fn plain_text(&mut self) -> error::Result<String> {
+        let text = self.buffer.inner().to_vec();
+
+        Ok(String::from_utf8(text)?)
     }
 }
 
@@ -98,15 +114,16 @@ impl<'a> AesEncryptionProviderTrait for AesEncryptionProvide<'a> {
         self.ciphertext_hex()
     }
 
-    fn perform_decryption(&mut self, ciphertext: &str, cipher: &AesCipher) -> String {
+    fn perform_decryption(
+        &mut self,
+        ciphertext: &str,
+        cipher: &AesCipher,
+    ) -> error::Result<String> {
         let (cipher, nonce) = (&cipher.cipher, &cipher.nonce);
 
-        // FIXME: clean up
-        let decoded = hex::decode(ciphertext).unwrap();
-        let x = aes::AesVecBuffer::<()>::from_vec(decoded);
-
-        // Note: buffer needs 16-bytes overhead for auth tag tag
-        self.buffer = x;
+        let decoded = hex::decode(ciphertext)?;
+        let buffer_data = aes::AesVecBuffer::<()>::from_vec(decoded);
+        self.buffer = buffer_data;
 
         cipher
             .decrypt_in_place(nonce, b"", &mut self.buffer)
@@ -118,21 +135,22 @@ impl<'a> AesEncryptionProviderTrait for AesEncryptionProvide<'a> {
                 );
                 Err(crate::DefaultError::ErrorMessage(err))
             })
-            .expect("Decrypt cipher in place");
+            .expect("Decrypt ciphertext in place");
 
-        // FIXME: This needs renaming as it is the decrypted text
-        self.ciphertext_hex()
+        Ok(self.plain_text()?)
     }
 }
 
 #[cfg(test)]
 mod encryptable {
-    use hex_literal::hex;
-
     use super::Encryptable;
     use super::EncrypterConfig;
     use crate::encrypter::AesEncryptionProvide;
     use crate::hasher::Hashable;
+    use hex_literal::hex;
+
+    use prettytable::row;
+    use prettytable::{Cell, Row, Table};
 
     #[test]
     fn test_encrypter() {
@@ -159,9 +177,12 @@ mod encryptable {
 
     #[test]
     fn test_decryption() {
+        let mut table = Table::new();
+
         const PBKDF_ROUNDS: u32 = 2;
         let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
+        let input_plaintext = "secret nuke codes go inside the football";
 
         let hasher =
             &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
@@ -170,26 +191,29 @@ mod encryptable {
             .unwrap();
         let pbkdf_key_hex = hex::encode(pbkdf_key);
 
-        let config = EncrypterConfig::new(pbkdf_key_hex);
+        let config = EncrypterConfig::new(pbkdf_key_hex.to_string());
 
         // Create Encrypter
         let mut provider = AesEncryptionProvide::new();
         let mut enc = super::Encrypter::<AesEncryptionProvide>::new(config.clone());
-        let r = enc.encrypt("secret nuke codes go inside the football", &mut provider);
+        let ciphertext = enc.encrypt(&input_plaintext, &mut provider);
+        table.add_row(row!["Ciphertext", ciphertext]);
+        table.add_row(row!["PBKDF Key (Hex)", pbkdf_key_hex]);
+        table.add_row(row!["AES Key", config.aes_key]);
 
-        // FIXME: Needs better API
-        let ciphertext = provider.ciphertext_hex();
-        println!("Ciphertext: {}", ciphertext);
+        // Perform decrypt
+        let key = config.aes_key.clone();
+        let config = EncrypterConfig::init(pbkdf_key_hex, key);
 
-        // let mut provider = AesEncryptionProvide::new();
-        // let mut enc = super::Encrypter::<AesEncryptionProvide>::new(config);
-        let r = enc.decrypt(&ciphertext, &mut provider);
+        let mut provider = AesEncryptionProvide::new();
+        let mut enc = super::Encrypter::<AesEncryptionProvide>::new(config);
+        let r = enc.decrypt(&ciphertext, &mut provider).unwrap();
 
-        // Magic
-        let decoded = hex::decode(r).unwrap();
-        let r = String::from_utf8(decoded).unwrap();
+        assert_eq!(r, String::from(input_plaintext));
 
-        assert_eq!(r, "secret nuke codes go inside the football")
+        // Print the table to stdout
+        table.add_row(row!["Decrypted", r]);
+        table.printstd();
     }
 }
 
@@ -197,6 +221,7 @@ mod encryptable {
 pub struct EncrypterConfig {
     pub hash_key: String,
     pub cipher: AesCipher,
+    pub aes_key: String,
 }
 
 impl EncrypterConfig {
@@ -205,20 +230,46 @@ impl EncrypterConfig {
         let cipher = Aes256GcmSiv::new(&key);
 
         // Generate nonce
-        let mut bytes = hash_key.as_bytes();
-        let mut short_nonce = [0u8; 12];
-        bytes
-            .read_exact(&mut short_nonce)
-            .expect("Nonce is too short");
-        let nonce: &GenericArray<u8, cipher::consts::U12> = Nonce::from_slice(&short_nonce[..]); // 96-bits; unique per message
+        let nonce = generate_nonce(hash_key.clone());
 
-        let cipher = AesCipher {
+        let cipher = AesCipher { cipher, nonce };
+        let key_hex = hex::encode(key);
+
+        Self {
+            hash_key,
             cipher,
-            nonce: *nonce,
-        };
-
-        Self { hash_key, cipher }
+            aes_key: key_hex,
+        }
     }
+
+    pub fn init(hash_key: String, aes_key: String) -> Self {
+        let decoded = hex::decode(aes_key).unwrap();
+        let key = GenericArray::from_slice(&decoded);
+        let cipher = Aes256GcmSiv::new(key);
+
+        // Generate nonce
+        let nonce = generate_nonce(hash_key.clone());
+        let cipher = AesCipher { cipher, nonce };
+        let key_hex = hex::encode(key);
+
+        Self {
+            hash_key,
+            cipher,
+            aes_key: key_hex,
+        }
+    }
+}
+
+pub fn generate_nonce(hash_key: String) -> GenericArray<u8, cipher::consts::U12> {
+    let mut bytes = hash_key.as_bytes();
+    let mut short_nonce = [0u8; 12];
+    bytes
+        .read_exact(&mut short_nonce)
+        .expect("Nonce is too short");
+    let nonce: GenericArray<u8, cipher::consts::U12> = *Nonce::from_slice(&short_nonce[..]);
+    // 96-bits; unique per message
+
+    nonce
 }
 
 #[cfg(test)]
