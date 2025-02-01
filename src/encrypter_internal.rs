@@ -147,7 +147,8 @@ mod encryptable {
     use super::EncrypterConfig;
     use crate::encrypter_internal::AesEncryptionProvide;
     use crate::encrypter_internal::OsRng;
-    use crate::hasher::Hashable;
+    use crate::hasher_internal::Hashable;
+    use crate::hasher_internal::{HashProvider, PrfHasher, KEY_BUFF_SIZE};
     use aes_gcm_siv::Aes256GcmSiv;
     use aes_gcm_siv::KeyInit;
     use hex_literal::hex;
@@ -158,11 +159,10 @@ mod encryptable {
     #[test]
     fn test_encrypter() {
         const PBKDF_ROUNDS: u32 = 2;
-        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
+        let buf = [0u8; KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
-        let hasher =
-            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let hasher = &mut HashProvider::<PrfHasher>::new(&mut buf_boxed);
         let pbkdf_key = hasher
             .pbkdf2_gen("password", "salt", &PBKDF_ROUNDS)
             .unwrap();
@@ -183,15 +183,14 @@ mod encryptable {
         let mut table = Table::new();
 
         const PBKDF_ROUNDS: u32 = 20;
-        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
+        let buf = [0u8; KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
         let input_plaintext = "secret nuke codes go inside the football";
 
         let salt_rng = Aes256GcmSiv::generate_key(&mut OsRng);
         let salt = hex::encode(salt_rng);
 
-        let hasher =
-            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let hasher = &mut HashProvider::<PrfHasher>::new(&mut buf_boxed);
         let pbkdf_key = hasher
             .pbkdf2_gen("password", salt.as_str(), &PBKDF_ROUNDS)
             .unwrap();
@@ -288,16 +287,16 @@ pub fn generate_nonce(hash_key: String) -> GenericArray<u8, cipher::consts::U12>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hasher::Hashable;
+    use crate::hasher_internal::Hashable;
+    use crate::hasher_internal::{HashProvider, PrfHasher, KEY_BUFF_SIZE};
 
     #[test]
     fn create_aes_config() {
         const PBKDF_ROUNDS: u32 = 2;
-        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
+        let buf = [0u8; KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
-        let hasher =
-            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let hasher = &mut HashProvider::<PrfHasher>::new(&mut buf_boxed);
         let pbkdf_key = hasher
             .pbkdf2_gen("password", "salt", &PBKDF_ROUNDS)
             .unwrap();

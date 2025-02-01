@@ -66,16 +66,16 @@ where {
 #[cfg(test)]
 mod tests {
     use super::Hashable;
+    use super::{HashProvider, PrfHasher, KEY_BUFF_SIZE};
     use hex_literal::hex;
 
     #[test]
     fn generate_pbkdf2_key() {
         const PBKDF_ROUNDS: u32 = 2;
-        let buf = [0u8; crate::hasher::KEY_BUFF_SIZE];
+        let buf = [0u8; KEY_BUFF_SIZE];
         let mut buf_boxed = Box::new(buf);
 
-        let hasher =
-            &mut crate::hasher::HashProvider::<crate::hasher::PrfHasher>::new(&mut buf_boxed);
+        let hasher = &mut HashProvider::<PrfHasher>::new(&mut buf_boxed);
         let pbkdf_key = hasher
             .pbkdf2_gen("password", "salt", &PBKDF_ROUNDS)
             .unwrap();
