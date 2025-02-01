@@ -145,8 +145,8 @@ impl<'a> AesEncryptionProviderTrait for AesEncryptionProvide<'a> {
 mod encryptable {
     use super::Encryptable;
     use super::EncrypterConfig;
-    use crate::encrypter::AesEncryptionProvide;
-    use crate::encrypter::OsRng;
+    use crate::encrypter_internal::AesEncryptionProvide;
+    use crate::encrypter_internal::OsRng;
     use crate::hasher::Hashable;
     use aes_gcm_siv::Aes256GcmSiv;
     use aes_gcm_siv::KeyInit;
