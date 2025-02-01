@@ -225,7 +225,8 @@ mod encryptable {
 
         // Print the table to stdout
         table.add_row(row!["Decrypted", r]);
-        table.printstd();
+        // FIXME: disabled for now
+        // table.printstd();
     }
 }
 
