@@ -5,10 +5,13 @@ use prelude::AesEncrypt;
 use tracing::trace;
 
 pub(crate) mod aes;
-pub mod encrypter;
 pub(crate) mod encrypter_internal;
-pub mod error;
 pub(crate) mod hasher_internal;
+
+pub mod encrypter;
+pub mod error;
+pub mod hasher;
+
 pub mod prelude {
     pub(crate) use crate::aes::AesEncrypt;
 }
