@@ -61,6 +61,19 @@ impl HashProvider for PBKDF2HashProvide {
     }
 }
 
+pub struct Hasher {}
+impl Hasher {
+    pub fn hash<HK>(
+        password: &str,
+        salt: &str,
+        rounds: &u32,
+        provider: impl HashProvider<Kind = HK>,
+        kind: HK,
+    ) -> HasherResult {
+        provider.hash(password, salt, rounds, kind).unwrap()
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct HasherResult {
     pub hash: String,
@@ -92,16 +105,10 @@ mod tests {
     #[traced_test]
     #[test]
     fn pbkdf2_hasher_with_impl_trait() {
-        let pbkdf2 = PBKDF2HashProvide {};
         let mut table = Table::new();
 
-        fn get_hasher(hasher: impl HashProvider<Kind = HasherKind>) -> HasherResult {
-            hasher
-                .hash("password", "salt", &HASH_ROUNDS, HasherKind::PBKDF2)
-                .unwrap()
-        }
-
-        let hash = get_hasher(pbkdf2);
+        let pbkdf2 = PBKDF2HashProvide {};
+        let hash = Hasher::hash("password", "salt", &HASH_ROUNDS, pbkdf2, HasherKind::PBKDF2);
         assert_ne!(hash.hash, "".to_string());
 
         let pbkdf_key_details = format!("PBKDF2 / SHA-512 with {} rounds", HASH_ROUNDS);

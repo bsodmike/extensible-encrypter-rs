@@ -2,6 +2,7 @@ use crate::aes::AesVecBuffer;
 use crate::error::DefaultError;
 use ::aes::cipher;
 use ::aes::cipher::generic_array::GenericArray;
+use aes256_gcm_siv::{Decryptable, Decrypter as AesDecrypter};
 use aes_gcm_siv::aead::Aead;
 use aes_gcm_siv::AesGcmSiv;
 use aes_gcm_siv::{
@@ -12,102 +13,98 @@ use std::fmt::Debug;
 use std::io::Read;
 use std::marker::PhantomData;
 
-pub struct Decrypter {
-    key: String,
-    nonce: String,
-    ciphertext: String,
+pub mod aes256_gcm_siv;
+
+pub enum DecrypterKind {
+    Aes256GcmSiv,
 }
 
-pub struct DecrypterBuilder {
-    key: String,
-    nonce: String,
-    ciphertext: String,
+pub trait DecryptProvider {
+    type Kind;
+
+    fn decrypt(
+        &self,
+        input: &mut AesDecrypter,
+        kind: Self::Kind,
+    ) -> Result<DecryptionResult, DefaultError>;
 }
 
-impl DecrypterBuilder {
-    pub fn new() -> Self {
-        Self {
-            key: String::new(),
-            nonce: String::new(),
-            ciphertext: String::new(),
-        }
-    }
+pub struct PBKDF2DecryptProvide {}
 
-    pub fn key(mut self, key: &str) -> Self {
-        self.key = key.to_string();
-        self
-    }
+impl DecryptProvider for PBKDF2DecryptProvide {
+    type Kind = DecrypterKind;
 
-    pub fn nonce(mut self, nonce: &str) -> Self {
-        self.nonce = nonce.to_string();
-        self
-    }
+    fn decrypt(
+        &self,
+        input: &mut AesDecrypter,
+        kind: Self::Kind,
+    ) -> Result<DecryptionResult, DefaultError> {
+        match kind {
+            DecrypterKind::Aes256GcmSiv => {
+                tracing::info!("Aes256GcmSiv");
 
-    pub fn ciphertext(mut self, ciphertext: &str) -> Self {
-        self.ciphertext = ciphertext.to_string();
-        self
-    }
+                let plaintext = input.decrypt()?;
 
-    pub fn build(self) -> Decrypter {
-        Decrypter {
-            key: self.key,
-            nonce: self.nonce,
-            ciphertext: self.ciphertext,
-        }
-    }
-}
-
-pub trait Decryptable {
-    fn decrypt(&mut self) -> Result<String, DefaultError>;
-}
-
-impl Decryptable for Decrypter {
-    fn decrypt(&mut self) -> Result<String, DefaultError> {
-        // Convert hex strings to bytes
-        let key = hex::decode(&self.key).unwrap();
-        let binding = hex::decode(&self.nonce).unwrap();
-        let nonce = Nonce::from_slice(binding.as_ref());
-        let ciphertext = hex::decode(&self.ciphertext).unwrap();
-
-        // Initialize AES-GCM-SIV
-        let cipher = Aes256GcmSiv::new_from_slice(&key).expect("Invalid key length");
-
-        // Decrypt the ciphertext
-        match cipher.decrypt(nonce, ciphertext.as_ref()) {
-            Ok(plaintext) => {
-                println!("Decryption successful!");
-                println!(
-                    "Decrypted plaintext: {:?}",
-                    String::from_utf8(plaintext.clone()).unwrap()
-                );
-                Ok(String::from_utf8(plaintext).unwrap())
-            }
-            Err(e) => {
-                println!("Decryption failed: {:?}", e);
-                Err(DefaultError::ErrorMessage("Decryption failed".to_string()))
+                Ok(DecryptionResult::new(plaintext))
             }
         }
+    }
+}
+
+pub struct DecryptionResult {
+    plaintext: String,
+}
+
+impl DecryptionResult {
+    pub fn new(plaintext: String) -> Self {
+        Self { plaintext }
+    }
+
+    pub fn plaintext(&self) -> &str {
+        &self.plaintext
+    }
+}
+
+pub struct Decrypter {}
+
+impl Decrypter {
+    pub fn decrypt<DK>(
+        // FIXME: input should use impl Trait instead of concrete type
+        input: &mut AesDecrypter,
+        provider: impl DecryptProvider<Kind = DK>,
+        kind: DK,
+    ) -> DecryptionResult {
+        let result = provider.decrypt(input, kind).unwrap();
+        result
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aes256_gcm_siv::DecrypterBuilder;
+    use tracing_test::traced_test;
 
+    use prettytable::row;
+    use prettytable::Table;
+
+    #[traced_test]
     #[test]
-    fn decrypt_example() {
+    fn aes256_gcm_siv_with_impl_trait() {
         // Convert hex strings to bytes
         let key = "7be4595c40e86cfa210dcb689fccb39aa9674596f367610074f8ad27c00532f3";
         let nonce = "623432663335626432396163";
         let ciphertext = "3a065c2810ef1ae018223be7ace9337da1657c9fb4490660903074861536c8b7ca2085a65b2abcb3f8ec94f2985e2dfeb06b0f3f66d6751a";
 
-        let mut decrypter = DecrypterBuilder::new()
+        let input = &mut aes256_gcm_siv::DecrypterBuilder::new()
             .key(key)
             .nonce(nonce)
             .ciphertext(ciphertext)
             .build();
 
-        let plaintext = decrypter.decrypt().unwrap();
-        assert_eq!(plaintext, "secret nuke codes go inside the football");
+        let decrypter = PBKDF2DecryptProvide {};
+        let result = Decrypter::decrypt(input, decrypter, DecrypterKind::Aes256GcmSiv);
+
+        assert_eq!(result.plaintext, "secret nuke codes go inside the football");
     }
 }
