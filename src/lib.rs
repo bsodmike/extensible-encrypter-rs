@@ -8,6 +8,7 @@ pub(crate) mod encrypter_internal;
 pub(crate) mod hasher_internal;
 
 pub mod decrypter;
+pub mod encrypter;
 pub mod error;
 pub mod hasher;
 

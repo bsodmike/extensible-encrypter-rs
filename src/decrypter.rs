@@ -104,8 +104,8 @@ mod tests {
             .ciphertext(ciphertext)
             .build();
 
-        let decrypter = PBKDF2DecryptProvide {};
-        let result = Decrypter::decrypt(input, decrypter, DecrypterKind::Aes256GcmSiv);
+        let provider = PBKDF2DecryptProvide {};
+        let result = Decrypter::decrypt(input, provider, DecrypterKind::Aes256GcmSiv);
 
         assert_eq!(result.plaintext, "secret nuke codes go inside the football");
     }
