@@ -16,6 +16,36 @@ pub struct Decrypter {
     ciphertext: String,
 }
 
+impl Decrypter {
+    pub fn from_payload(payload: &impl DecrypterPayload) -> Self {
+        Self {
+            key: payload.key().to_string(),
+            nonce: payload.nonce().to_string(),
+            ciphertext: payload.ciphertext().to_string(),
+        }
+    }
+}
+
+pub trait DecrypterPayload {
+    fn key(&self) -> &str;
+    fn nonce(&self) -> &str;
+    fn ciphertext(&self) -> &str;
+}
+
+impl DecrypterPayload for &mut Decrypter {
+    fn key(&self) -> &str {
+        &self.key
+    }
+
+    fn nonce(&self) -> &str {
+        &self.nonce
+    }
+
+    fn ciphertext(&self) -> &str {
+        &self.ciphertext
+    }
+}
+
 pub struct DecrypterBuilder {
     key: String,
     nonce: String,

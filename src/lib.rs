@@ -1,17 +1,16 @@
-use crate::aes::AesEncrypter;
 use crate::error::DefaultError;
-use aes_gcm_siv::AesGcmSiv;
-use prelude::AesEncrypt;
-use tracing::trace;
 
 pub(crate) mod aes;
+
+// NOTE: These are now used as references of a crude speed run, and I'm extracting these into the
+// public interface, with simplifcation as the goal.
 pub(crate) mod encrypter_internal;
 pub(crate) mod hasher_internal;
 
-pub mod encrypter;
+pub mod decrypter;
 pub mod error;
 pub mod hasher;
 
 pub mod prelude {
-    pub(crate) use crate::aes::AesEncrypt;
+    use crate::decrypter::*;
 }

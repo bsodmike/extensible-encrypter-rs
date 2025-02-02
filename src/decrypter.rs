@@ -2,7 +2,7 @@ use crate::aes::AesVecBuffer;
 use crate::error::DefaultError;
 use ::aes::cipher;
 use ::aes::cipher::generic_array::GenericArray;
-use aes256_gcm_siv::{Decryptable, Decrypter as AesDecrypter};
+use aes256_gcm_siv::{Decryptable, Decrypter as DecryptData, DecrypterPayload};
 use aes_gcm_siv::aead::Aead;
 use aes_gcm_siv::AesGcmSiv;
 use aes_gcm_siv::{
@@ -24,7 +24,7 @@ pub trait DecryptProvider {
 
     fn decrypt(
         &self,
-        input: &mut AesDecrypter,
+        input: &mut DecryptData,
         kind: Self::Kind,
     ) -> Result<DecryptionResult, DefaultError>;
 }
@@ -36,7 +36,7 @@ impl DecryptProvider for PBKDF2DecryptProvide {
 
     fn decrypt(
         &self,
-        input: &mut AesDecrypter,
+        input: &mut DecryptData,
         kind: Self::Kind,
     ) -> Result<DecryptionResult, DefaultError> {
         match kind {
@@ -68,13 +68,15 @@ impl DecryptionResult {
 pub struct Decrypter {}
 
 impl Decrypter {
+    ///  Uses impl trait to accept any type that implements DecrypterPayload and converts it to DecryptData, passing this to the provider to perform the decryption
     pub fn decrypt<DK>(
-        // FIXME: input should use impl Trait instead of concrete type
-        input: &mut AesDecrypter,
+        mut input: impl DecrypterPayload,
         provider: impl DecryptProvider<Kind = DK>,
         kind: DK,
     ) -> DecryptionResult {
+        let input = &mut DecryptData::from_payload(&mut input);
         let result = provider.decrypt(input, kind).unwrap();
+
         result
     }
 }
