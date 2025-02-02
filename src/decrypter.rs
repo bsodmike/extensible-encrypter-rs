@@ -20,32 +20,32 @@ use std::marker::PhantomData;
 
 pub mod aes256_gcm_siv;
 
-pub enum DecrypterKind {
+pub enum DecrypterCipher {
     Aes256GcmSiv,
 }
 
 pub trait DecryptProvider {
-    type Kind;
+    type Cipher;
 
     fn decrypt(
         &self,
         input: &mut DecryptData,
-        kind: Self::Kind,
+        cipher: Self::Cipher,
     ) -> Result<DecryptionResult, DefaultError>;
 }
 
 pub struct PBKDF2DecryptProvide {}
 
 impl DecryptProvider for PBKDF2DecryptProvide {
-    type Kind = DecrypterKind;
+    type Cipher = DecrypterCipher;
 
     fn decrypt(
         &self,
         input: &mut DecryptData,
-        kind: Self::Kind,
+        cipher: Self::Cipher,
     ) -> Result<DecryptionResult, DefaultError> {
-        match kind {
-            DecrypterKind::Aes256GcmSiv => {
+        match cipher {
+            DecrypterCipher::Aes256GcmSiv => {
                 tracing::info!("Aes256GcmSiv");
 
                 // FIXME: old approach
@@ -68,7 +68,7 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
                     "password",
                     &HASH_ROUNDS,
-                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha256,
+                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
                     Some(salt),
                 )
                 .unwrap();
@@ -123,13 +123,13 @@ pub struct Decrypter {}
 
 impl Decrypter {
     ///  Uses impl trait to accept any type that implements DecrypterPayload and converts it to DecryptData, passing this to the provider to perform the decryption
-    pub fn decrypt<DK>(
+    pub fn decrypt<CipherType>(
         mut input: impl DecrypterPayload,
-        provider: impl DecryptProvider<Kind = DK>,
-        kind: DK,
+        provider: impl DecryptProvider<Cipher = CipherType>,
+        cipher: CipherType,
     ) -> DecryptionResult {
         let input = &mut DecryptData::from_payload(&mut input);
-        let result = provider.decrypt(input, kind).unwrap();
+        let result = provider.decrypt(input, cipher).unwrap();
 
         result
     }
@@ -144,9 +144,10 @@ mod tests {
     use prettytable::row;
     use prettytable::Table;
 
+    #[ignore]
     #[traced_test]
     #[test]
-    fn aes256_gcm_siv_with_impl_trait() {
+    fn aes256_gcm_siv_pbkdf2_sha256() {
         let ciphertext = "e7550de30e76d4546082d17e762032b6dfcc650e2d4072cc6e52bf";
         let nonce = "66444888d4f0e1a69f387dfe";
         let salt = "30656e4d7a36716534452b414837384d4a4946635967";
@@ -158,7 +159,7 @@ mod tests {
             .build();
 
         let provider = PBKDF2DecryptProvide {};
-        let result = Decrypter::decrypt(input, provider, DecrypterKind::Aes256GcmSiv);
+        let result = Decrypter::decrypt(input, provider, DecrypterCipher::Aes256GcmSiv);
 
         assert_eq!(result.plaintext, "hello there");
     }

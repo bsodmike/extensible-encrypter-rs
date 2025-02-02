@@ -37,9 +37,9 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
     fn encrypt(
         &self,
         password: &str,
-        hash_provider: impl HashProvider<Kind = Self::HK>,
+        _hash_provider: impl HashProvider<Kind = Self::HK>,
         encryption_kind: Self::EK,
-        hasher_kind: Self::HK,
+        _hasher_kind: Self::HK,
     ) -> Result<EncryptionResult, DefaultError> {
         match encryption_kind {
             EncrypterKind::Aes256GcmSiv => {
@@ -63,9 +63,9 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
 
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
-                    "password",
+                    password,
                     &HASH_ROUNDS,
-                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha256,
+                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
                     Some(salt),
                 )
                 .unwrap();
@@ -129,14 +129,9 @@ impl Encrypter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hasher::HashProvider;
-    use crate::hasher::Hasher;
     use crate::hasher::HasherKind;
     use crate::hasher::PBKDF2HashProvide;
     use tracing_test::traced_test;
-
-    use prettytable::row;
-    use prettytable::Table;
 
     #[traced_test]
     #[test]
@@ -163,7 +158,7 @@ mod tests {
         let result = crate::decrypter::Decrypter::decrypt(
             input,
             provider,
-            crate::decrypter::DecrypterKind::Aes256GcmSiv,
+            crate::decrypter::DecrypterCipher::Aes256GcmSiv,
         );
 
         assert_eq!(
