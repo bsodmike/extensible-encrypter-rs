@@ -17,7 +17,7 @@ pub trait HashProvider {
     fn hash(
         &self,
         password: &str,
-        salt: &str,
+        salt_override: &str,
         rounds: &u32,
         kind: Self::Kind,
     ) -> Result<HasherResult, DefaultError>;
@@ -31,7 +31,7 @@ impl HashProvider for PBKDF2HashProvide {
     fn hash(
         &self,
         password: &str,
-        salt: &str,
+        salt_override: &str,
         rounds: &u32,
         kind: Self::Kind,
     ) -> Result<HasherResult, DefaultError> {
@@ -43,13 +43,12 @@ impl HashProvider for PBKDF2HashProvide {
                 let mut buf_boxed = Box::new(buf);
 
                 let hasher = &mut pbkdf2::HashProvider::<pbkdf2::PrfHasher>::new(&mut buf_boxed);
-                let hash = hasher.pbkdf2_gen(password, salt, &rounds).unwrap();
-                let hash_hex = hex::encode(hash);
+                let hash = hasher.generate_hash(password, "", &rounds, false).unwrap();
 
                 Ok(HasherResult::new(
-                    hash_hex,
+                    hash.hash(),
                     password.to_string(),
-                    salt.to_string(),
+                    hash.salt(),
                 ))
             }
             HasherKind::Argon2 => {
