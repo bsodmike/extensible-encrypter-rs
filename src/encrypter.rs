@@ -7,8 +7,6 @@ use aes_gcm_siv::{
 };
 use pbkdf2::password_hash::SaltString;
 
-pub mod aes256_gcm_siv;
-
 const HASH_ROUNDS: u32 = 20;
 
 pub enum EncrypterKind {
