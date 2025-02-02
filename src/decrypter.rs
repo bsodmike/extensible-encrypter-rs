@@ -1,5 +1,5 @@
 use super::hasher::{HashProvider, HasherKind};
-use crate::aes::AesVecBuffer;
+// use crate::aes::AesVecBuffer;
 use crate::error::DefaultError;
 use ::aes::cipher;
 use ::aes::cipher::generic_array::GenericArray;
