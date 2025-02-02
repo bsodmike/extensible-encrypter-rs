@@ -54,7 +54,10 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 const HASH_ROUNDS: u32 = 20;
 
                 // Convert hex strings to bytes
-                let salt = input.salt();
+                let salt_hex = input.salt();
+                let salt_decoded = hex::decode(salt_hex).unwrap();
+                let salt = SaltString::new(&String::from_utf8(salt_decoded).unwrap()).unwrap();
+                println!("Salt: {:?}", salt);
 
                 let decoded_nonce = hex::decode(input.nonce()).unwrap();
                 let nonce = Nonce::from_slice(decoded_nonce.as_ref());
@@ -69,52 +72,18 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 // );
                 // assert_ne!(hasher.hash, "".to_string());
 
-                // // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
-                // let hasher = super::hasher::pbkdf2::Hasher::hash(
-                //     "password",
-                //     &HASH_ROUNDS,
-                //     super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
-                //     Some(SaltString::from_b64(salt).unwrap()),
-                // )
-                // .unwrap();
-                //
-                // // Convert the key to a fixed-size array
-                // let key = hex::decode(hasher.hash().as_str()).unwrap();
-                // let key_array: [u8; 32] = key.try_into().unwrap();
-
-                // FIXME: This is where the salt handling went wrong
-
-                // Decryption
-                // Re-derive the key using the same password and salt
-                let salt_hex = "30656e4d7a36716534452b414837384d4a4946635967";
-                let salt_decoded = hex::decode(salt_hex).unwrap();
-                let salt = SaltString::new(&String::from_utf8(salt_decoded).unwrap()).unwrap();
-                println!("Salt: {:?}", salt);
-
-                let ciphertext_hex = "e7550de30e76d4546082d17e762032b6dfcc650e2d4072cc6e52bf";
-                let ciphertext = hex::decode(ciphertext_hex).unwrap();
-
-                let nonce = "66444888d4f0e1a69f387dfe";
-                let decoded_nonce = hex::decode(nonce).unwrap();
-                let nonce = GenericArray::from_slice(&decoded_nonce);
-
-                let decryption_key = Pbkdf2
-                    .hash_password_customized(
-                        "password".as_bytes(),
-                        None,
-                        None,
-                        pbkdf2::Params {
-                            rounds: 20,
-                            output_length: 32,
-                        },
-                        &salt,
-                    )
-                    .unwrap();
+                // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
+                let hasher = super::hasher::pbkdf2::Hasher::hash(
+                    "password",
+                    &HASH_ROUNDS,
+                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha256,
+                    Some(salt),
+                )
+                .unwrap();
 
                 // Convert the key to a fixed-size array
-                let binding = decryption_key.hash.unwrap();
-                let decryption_key_bytes = binding.as_bytes();
-                let decryption_key_array: [u8; 32] = decryption_key_bytes.try_into().unwrap();
+                let key = hex::decode(hasher.hash().as_str()).unwrap();
+                let decryption_key_array: [u8; 32] = key.try_into().unwrap();
 
                 // Initialize the AES-GCM-SIV cipher for decryption
                 let decryption_cipher =
@@ -183,7 +152,6 @@ mod tests {
     use prettytable::row;
     use prettytable::Table;
 
-    #[ignore]
     #[traced_test]
     #[test]
     // FIXME: the provided key, nonce, and ciphertext are incorrect

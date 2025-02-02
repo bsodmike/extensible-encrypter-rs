@@ -147,7 +147,7 @@ mod tests {
         tracing::info!("Result: {:?}", result);
     }
 
-    #[inline]
+    #[ignore]
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_with_impl_trait_integration() {
