@@ -1,6 +1,10 @@
 use crate::error;
 use hmac::{digest::core_api::CoreWrapper, EagerHash, Hmac, HmacCore};
 use pbkdf2::pbkdf2;
+use pbkdf2::{
+    password_hash::{PasswordHasher, SaltString},
+    Pbkdf2,
+};
 use sha2::Sha512;
 use std::{fmt::Debug, marker::PhantomData};
 

@@ -1,5 +1,15 @@
 use crate::error::DefaultError;
 use crate::hasher::{HashProvider, HasherKind};
+use aes_gcm_siv::{
+    aead::{Aead, KeyInit, OsRng},
+    Aes256GcmSiv, Nonce,
+};
+use hmac::Hmac;
+use pbkdf2::{
+    password_hash::{PasswordHasher, SaltString},
+    Pbkdf2,
+};
+use sha2::Sha512;
 
 pub mod aes256_gcm_siv;
 
@@ -39,6 +49,7 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
             EncrypterKind::Aes256GcmSiv => {
                 tracing::info!("Aes256GcmSiv");
 
+                let plaintext = "Hello, world!";
                 let hash = crate::hasher::Hasher::hash(
                     password,
                     "salt",
@@ -47,12 +58,47 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                     HasherKind::PBKDF2,
                 );
                 assert_ne!(hash.hash, "".to_string());
+                let nonce = aes256_gcm_siv::generate_nonce(hash.hash);
+
+                // A salt for PBKDF2 (should be unique per encryption)
+                let salt = SaltString::generate(&mut OsRng);
+
+                // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
+                let key = Pbkdf2
+                    .hash_password_customized(
+                        password.as_bytes(),
+                        None,
+                        None,
+                        pbkdf2::Params {
+                            rounds: 20,
+                            output_length: 32,
+                        },
+                        &salt,
+                    )
+                    .unwrap();
+
+                // Convert the key to a fixed-size array
+                let key_hash = key.hash.unwrap();
+                let key_bytes = key_hash.as_bytes();
+                let key_array: [u8; 32] = key_bytes.try_into().unwrap();
+
+                // Initialize the AES-GCM-SIV cipher
+                let cipher = Aes256GcmSiv::new_from_slice(&key_array).unwrap();
+
+                // Encrypt the message
+                let ciphertext = cipher.encrypt(&nonce, plaintext.as_bytes()).unwrap(); // Output the results
+                println!("Salt: {}", salt);
+                println!("Nonce: {:?}", nonce);
+                println!("Ciphertext: {:?}", ciphertext);
+
+                let ciphertext_hex = hex::encode(ciphertext);
+                let nonce_hex = hex::encode(nonce);
+                let salt_hex = hex::encode(salt.as_ref());
 
                 Ok(EncryptionResult {
-                    ciphertext: "".to_string(),
-                    key: "".to_string(),
-                    nonce: "".to_string(),
-                    salt: "".to_string(),
+                    ciphertext: ciphertext_hex,
+                    nonce: nonce_hex,
+                    salt: salt_hex,
                 })
             }
         }
@@ -61,7 +107,6 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
 
 pub struct EncryptionResult {
     pub ciphertext: String,
-    pub key: String,
     pub nonce: String, // iv?
     pub salt: String,
 }

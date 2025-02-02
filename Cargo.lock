@@ -48,6 +48,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64ct"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
+
+[[package]]
 name = "bitflags"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -339,6 +345,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
+name = "password-hash"
+version = "0.6.0-rc.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec3b470a56963403c40f9dbb41eaee539759de9d026d3324da705a0ae0d269cd"
+dependencies = [
+ "base64ct",
+ "rand_core",
+ "subtle",
+]
+
+[[package]]
 name = "pbkdf-encrypt-core"
 version = "0.1.0"
 dependencies = [
@@ -364,6 +381,8 @@ checksum = "85e11753d5193f26dc27ae698e0b536b5e511b7799c5ac475ec10783f26d164a"
 dependencies = [
  "digest",
  "hmac",
+ "password-hash",
+ "sha2",
 ]
 
 [[package]]
