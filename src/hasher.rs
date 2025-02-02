@@ -1,5 +1,4 @@
 use crate::error::DefaultError;
-use pbkdf2::Hashable;
 
 pub mod pbkdf2;
 
@@ -39,11 +38,7 @@ impl HashProvider for PBKDF2HashProvide {
             HasherKind::PBKDF2 => {
                 tracing::info!("PBKDF2");
 
-                let buf = [0u8; pbkdf2::KEY_BUFF_SIZE];
-                let mut buf_boxed = Box::new(buf);
-
-                let hasher = &mut pbkdf2::HashProvider::<pbkdf2::PrfHasher>::new(&mut buf_boxed);
-                let hash = hasher.generate_hash(password, "", &rounds, false).unwrap();
+                let hash = pbkdf2::Hasher::generate_hash(password, "", &rounds, false).unwrap();
 
                 Ok(HasherResult::new(
                     hash.hash(),
