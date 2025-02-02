@@ -27,7 +27,7 @@ impl Hasher {
         password: &str,
         rounds: &u32,
         algorithm: Algorithm,
-        override_salt: Option<String>,
+        override_salt: Option<SaltString>,
     ) -> error::Result<HasherResult>
 where {
         // A salt for PBKDF2 (should be unique per encryption)
@@ -88,6 +88,7 @@ impl HasherResult {
 #[cfg(test)]
 mod tests {
     use crate::hasher::pbkdf2::Algorithm;
+    use pbkdf2::password_hash::SaltString;
 
     use super::Hasher;
 
@@ -100,7 +101,7 @@ mod tests {
             "password",
             &PBKDF_ROUNDS,
             Algorithm::Pbkdf2Sha512,
-            Some("salt".to_string()),
+            Some(SaltString::from_b64("salt").unwrap()),
         )
         .unwrap();
 

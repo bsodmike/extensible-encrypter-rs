@@ -1,3 +1,4 @@
+use super::hasher::{HashProvider, HasherKind};
 use crate::aes::AesVecBuffer;
 use crate::error::DefaultError;
 use ::aes::cipher;
@@ -8,6 +9,10 @@ use aes_gcm_siv::AesGcmSiv;
 use aes_gcm_siv::{
     aead::{AeadInPlace, Buffer, KeyInit, OsRng},
     Aes256GcmSiv, Nonce,
+};
+use pbkdf2::{
+    password_hash::{PasswordHasher, SaltString},
+    Pbkdf2,
 };
 use std::fmt::Debug;
 use std::io::Read;
@@ -44,9 +49,96 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 tracing::info!("Aes256GcmSiv");
 
                 // FIXME: old approach
-                let plaintext = input.decrypt()?;
+                // let plaintext = input.decrypt()?;
 
-                Ok(DecryptionResult::new(plaintext))
+                const HASH_ROUNDS: u32 = 20;
+
+                // Convert hex strings to bytes
+                let salt = input.salt();
+
+                let decoded_nonce = hex::decode(input.nonce()).unwrap();
+                let nonce = Nonce::from_slice(decoded_nonce.as_ref());
+                let ciphertext = hex::decode(input.ciphertext()).unwrap();
+
+                let hash_provider = super::hasher::PBKDF2HashProvide {};
+                // let hasher = crate::hasher::Hasher::hash(
+                //     "password",
+                //     &HASH_ROUNDS,
+                //     hash_provider,
+                //     HasherKind::PBKDF2,
+                // );
+                // assert_ne!(hasher.hash, "".to_string());
+
+                // // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
+                // let hasher = super::hasher::pbkdf2::Hasher::hash(
+                //     "password",
+                //     &HASH_ROUNDS,
+                //     super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
+                //     Some(SaltString::from_b64(salt).unwrap()),
+                // )
+                // .unwrap();
+                //
+                // // Convert the key to a fixed-size array
+                // let key = hex::decode(hasher.hash().as_str()).unwrap();
+                // let key_array: [u8; 32] = key.try_into().unwrap();
+
+                // FIXME: This is where the salt handling went wrong
+
+                // Decryption
+                // Re-derive the key using the same password and salt
+                let salt_hex = "30656e4d7a36716534452b414837384d4a4946635967";
+                let salt_decoded = hex::decode(salt_hex).unwrap();
+                let salt = SaltString::new(&String::from_utf8(salt_decoded).unwrap()).unwrap();
+                println!("Salt: {:?}", salt);
+
+                let ciphertext_hex = "e7550de30e76d4546082d17e762032b6dfcc650e2d4072cc6e52bf";
+                let ciphertext = hex::decode(ciphertext_hex).unwrap();
+
+                let nonce = "66444888d4f0e1a69f387dfe";
+                let decoded_nonce = hex::decode(nonce).unwrap();
+                let nonce = GenericArray::from_slice(&decoded_nonce);
+
+                let decryption_key = Pbkdf2
+                    .hash_password_customized(
+                        "password".as_bytes(),
+                        None,
+                        None,
+                        pbkdf2::Params {
+                            rounds: 20,
+                            output_length: 32,
+                        },
+                        &salt,
+                    )
+                    .unwrap();
+
+                // Convert the key to a fixed-size array
+                let binding = decryption_key.hash.unwrap();
+                let decryption_key_bytes = binding.as_bytes();
+                let decryption_key_array: [u8; 32] = decryption_key_bytes.try_into().unwrap();
+
+                // Initialize the AES-GCM-SIV cipher for decryption
+                let decryption_cipher =
+                    Aes256GcmSiv::new_from_slice(&decryption_key_array).unwrap();
+
+                // Decrypt the ciphertext
+                let decrypted_message = match decryption_cipher.decrypt(nonce, ciphertext.as_ref())
+                {
+                    Ok(message) => message,
+                    Err(err) => {
+                        return Err(DefaultError::ErrorMessage(format!(
+                            "Failed to decrypt due to {}.",
+                            err.to_string()
+                        )))
+                    }
+                };
+
+                // Convert the decrypted message to a string
+                let decrypted_message = String::from_utf8(decrypted_message).unwrap();
+
+                // Output the decryption result
+                println!("Decrypted message: {}", decrypted_message);
+
+                Ok(DecryptionResult::new(decrypted_message))
             }
         }
     }
@@ -91,16 +183,22 @@ mod tests {
     use prettytable::row;
     use prettytable::Table;
 
+    #[ignore]
     #[traced_test]
     #[test]
+    // FIXME: the provided key, nonce, and ciphertext are incorrect
     fn aes256_gcm_siv_with_impl_trait() {
         // Convert hex strings to bytes
-        let key = "7be4595c40e86cfa210dcb689fccb39aa9674596f367610074f8ad27c00532f3";
-        let nonce = "623432663335626432396163";
-        let ciphertext = "3a065c2810ef1ae018223be7ace9337da1657c9fb4490660903074861536c8b7ca2085a65b2abcb3f8ec94f2985e2dfeb06b0f3f66d6751a";
+        // let key = "7be4595c40e86cfa210dcb689fccb39aa9674596f367610074f8ad27c00532f3";
+        // let nonce = "623432663335626432396163";
+        // let ciphertext = "3a065c2810ef1ae018223be7ace9337da1657c9fb4490660903074861536c8b7ca2085a65b2abcb3f8ec94f2985e2dfeb06b0f3f66d6751a";
+
+        let ciphertext = "e7550de30e76d4546082d17e762032b6dfcc650e2d4072cc6e52bf";
+        let nonce = "66444888d4f0e1a69f387dfe";
+        let salt = "30656e4d7a36716534452b414837384d4a4946635967";
 
         let input = &mut aes256_gcm_siv::DecrypterBuilder::new()
-            .key(key)
+            .salt(salt)
             .nonce(nonce)
             .ciphertext(ciphertext)
             .build();

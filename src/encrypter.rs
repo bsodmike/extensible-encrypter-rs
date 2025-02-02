@@ -147,37 +147,38 @@ mod tests {
         tracing::info!("Result: {:?}", result);
     }
 
-    // #[traced_test]
-    // #[test]
-    // fn aes256_gcm_siv_with_impl_trait_integration() {
-    //     let hash_provider = PBKDF2HashProvide {};
-    //     let provider = Aes256GcmSivEncryptProvide {};
-    //
-    //     let result = Encrypter::encrypt(
-    //         "password",
-    //         hash_provider,
-    //         provider,
-    //         EncrypterKind::Aes256GcmSiv,
-    //         HasherKind::PBKDF2,
-    //     );
-    //     tracing::info!("Result: {:?}", result);
-    //
-    //     let input = &mut crate::decrypter::aes256_gcm_siv::DecrypterBuilder::new()
-    //         .key(result.salt.as_str())
-    //         .nonce(result.nonce.as_str())
-    //         .ciphertext(result.ciphertext.as_str())
-    //         .build();
-    //
-    //     let provider = crate::decrypter::PBKDF2DecryptProvide {};
-    //     let result = crate::decrypter::Decrypter::decrypt(
-    //         input,
-    //         provider,
-    //         crate::decrypter::DecrypterKind::Aes256GcmSiv,
-    //     );
-    //
-    //     assert_eq!(
-    //         result.plaintext(),
-    //         "secret nuke codes go inside the football"
-    //     );
-    // }
+    #[inline]
+    #[traced_test]
+    #[test]
+    fn aes256_gcm_siv_with_impl_trait_integration() {
+        let hash_provider = PBKDF2HashProvide {};
+        let provider = Aes256GcmSivEncryptProvide {};
+
+        let result = Encrypter::encrypt(
+            "password",
+            hash_provider,
+            provider,
+            EncrypterKind::Aes256GcmSiv,
+            HasherKind::PBKDF2,
+        );
+        tracing::info!("Result: {:?}", result);
+
+        let input = &mut crate::decrypter::aes256_gcm_siv::DecrypterBuilder::new()
+            .salt(result.salt.as_str())
+            .nonce(result.nonce.as_str())
+            .ciphertext(result.ciphertext.as_str())
+            .build();
+
+        let provider = crate::decrypter::PBKDF2DecryptProvide {};
+        let result = crate::decrypter::Decrypter::decrypt(
+            input,
+            provider,
+            crate::decrypter::DecrypterKind::Aes256GcmSiv,
+        );
+
+        assert_eq!(
+            result.plaintext(),
+            "secret nuke codes go inside the football"
+        );
+    }
 }
