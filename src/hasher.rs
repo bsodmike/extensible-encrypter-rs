@@ -37,7 +37,7 @@ impl HashProvider for PBKDF2HashProvide {
                 tracing::info!("PBKDF2");
 
                 let hash =
-                    pbkdf2::Hasher::hash(password, &rounds, pbkdf2::Algorithm::Pbkdf2Sha512, None)
+                    pbkdf2::Hasher::hash(password, &rounds, pbkdf2::Algorithm::Pbkdf2Sha256, None)
                         .unwrap();
 
                 Ok(HasherResult::new(

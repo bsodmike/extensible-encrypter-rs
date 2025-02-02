@@ -63,16 +63,8 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 let nonce = Nonce::from_slice(decoded_nonce.as_ref());
                 let ciphertext = hex::decode(input.ciphertext()).unwrap();
 
-                let hash_provider = super::hasher::PBKDF2HashProvide {};
-                // let hasher = crate::hasher::Hasher::hash(
-                //     "password",
-                //     &HASH_ROUNDS,
-                //     hash_provider,
-                //     HasherKind::PBKDF2,
-                // );
-                // assert_ne!(hasher.hash, "".to_string());
-
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
+                // FIXME: Since the decryption process needs to pass and override the salt, I'm temporarily hardcoding it here.  Ideally, we should figure out away to pass this along.
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
                     "password",
                     &HASH_ROUNDS,
@@ -154,13 +146,7 @@ mod tests {
 
     #[traced_test]
     #[test]
-    // FIXME: the provided key, nonce, and ciphertext are incorrect
     fn aes256_gcm_siv_with_impl_trait() {
-        // Convert hex strings to bytes
-        // let key = "7be4595c40e86cfa210dcb689fccb39aa9674596f367610074f8ad27c00532f3";
-        // let nonce = "623432663335626432396163";
-        // let ciphertext = "3a065c2810ef1ae018223be7ace9337da1657c9fb4490660903074861536c8b7ca2085a65b2abcb3f8ec94f2985e2dfeb06b0f3f66d6751a";
-
         let ciphertext = "e7550de30e76d4546082d17e762032b6dfcc650e2d4072cc6e52bf";
         let nonce = "66444888d4f0e1a69f387dfe";
         let salt = "30656e4d7a36716534452b414837384d4a4946635967";
@@ -174,6 +160,6 @@ mod tests {
         let provider = PBKDF2DecryptProvide {};
         let result = Decrypter::decrypt(input, provider, DecrypterKind::Aes256GcmSiv);
 
-        assert_eq!(result.plaintext, "secret nuke codes go inside the football");
+        assert_eq!(result.plaintext, "hello there");
     }
 }
