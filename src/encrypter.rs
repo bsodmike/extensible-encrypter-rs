@@ -50,46 +50,34 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 tracing::info!("Aes256GcmSiv");
 
                 let plaintext = "Hello, world!";
-                let hash = crate::hasher::Hasher::hash(
-                    password,
-                    "salt",
-                    &HASH_ROUNDS,
-                    hash_provider,
-                    HasherKind::PBKDF2,
-                );
-                assert_ne!(hash.hash, "".to_string());
-                let nonce = aes256_gcm_siv::generate_nonce(hash.hash);
 
                 // A salt for PBKDF2 (should be unique per encryption)
                 let salt = SaltString::generate(&mut OsRng);
 
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
-                let key = Pbkdf2
-                    .hash_password_customized(
-                        password.as_bytes(),
-                        None,
-                        None,
-                        pbkdf2::Params {
-                            rounds: 20,
-                            output_length: 32,
-                        },
-                        &salt,
-                    )
-                    .unwrap();
+                let hasher = crate::hasher::Hasher::hash(
+                    password,
+                    &HASH_ROUNDS,
+                    hash_provider,
+                    HasherKind::PBKDF2,
+                );
+                assert_ne!(hasher.hash, "".to_string());
 
                 // Convert the key to a fixed-size array
-                let key_hash = key.hash.unwrap();
-                let key_bytes = key_hash.as_bytes();
-                let key_array: [u8; 32] = key_bytes.try_into().unwrap();
+                let key = hex::decode(hasher.hash.as_str()).unwrap();
+                let key_array: [u8; 32] = key.try_into().unwrap();
 
                 // Initialize the AES-GCM-SIV cipher
                 let cipher = Aes256GcmSiv::new_from_slice(&key_array).unwrap();
 
+                // Generate a random nonce (96 bits)
+                let nonce = aes256_gcm_siv::generate_nonce(hasher.hash);
+
                 // Encrypt the message
                 let ciphertext = cipher.encrypt(&nonce, plaintext.as_bytes()).unwrap(); // Output the results
-                println!("Salt: {}", salt);
-                println!("Nonce: {:?}", nonce);
-                println!("Ciphertext: {:?}", ciphertext);
+                tracing::debug!("Salt: {}", salt);
+                tracing::debug!("Nonce: {:?}", nonce);
+                tracing::debug!("Ciphertext: {:?}", ciphertext);
 
                 let ciphertext_hex = hex::encode(ciphertext);
                 let nonce_hex = hex::encode(nonce);
@@ -105,6 +93,7 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
     }
 }
 
+#[derive(Debug)]
 pub struct EncryptionResult {
     pub ciphertext: String,
     pub nonce: String, // iv?
@@ -142,21 +131,10 @@ mod tests {
     use prettytable::row;
     use prettytable::Table;
 
-    const HASH_ROUNDS: u32 = 2;
-
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_with_impl_trait() {
         let hash_provider = PBKDF2HashProvide {};
-        // let hash = Hasher::hash(
-        //     "password",
-        //     "salt",
-        //     &HASH_ROUNDS,
-        //     hash_provider,
-        //     HasherKind::PBKDF2,
-        // );
-        // assert_ne!(hash.hash, "".to_string());
-
         let provider = Aes256GcmSivEncryptProvide {};
 
         let result = Encrypter::encrypt(
@@ -166,5 +144,40 @@ mod tests {
             EncrypterKind::Aes256GcmSiv,
             HasherKind::PBKDF2,
         );
+        tracing::info!("Result: {:?}", result);
     }
+
+    // #[traced_test]
+    // #[test]
+    // fn aes256_gcm_siv_with_impl_trait_integration() {
+    //     let hash_provider = PBKDF2HashProvide {};
+    //     let provider = Aes256GcmSivEncryptProvide {};
+    //
+    //     let result = Encrypter::encrypt(
+    //         "password",
+    //         hash_provider,
+    //         provider,
+    //         EncrypterKind::Aes256GcmSiv,
+    //         HasherKind::PBKDF2,
+    //     );
+    //     tracing::info!("Result: {:?}", result);
+    //
+    //     let input = &mut crate::decrypter::aes256_gcm_siv::DecrypterBuilder::new()
+    //         .key(result.salt.as_str())
+    //         .nonce(result.nonce.as_str())
+    //         .ciphertext(result.ciphertext.as_str())
+    //         .build();
+    //
+    //     let provider = crate::decrypter::PBKDF2DecryptProvide {};
+    //     let result = crate::decrypter::Decrypter::decrypt(
+    //         input,
+    //         provider,
+    //         crate::decrypter::DecrypterKind::Aes256GcmSiv,
+    //     );
+    //
+    //     assert_eq!(
+    //         result.plaintext(),
+    //         "secret nuke codes go inside the football"
+    //     );
+    // }
 }

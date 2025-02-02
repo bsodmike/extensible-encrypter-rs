@@ -16,7 +16,6 @@ pub trait HashProvider {
     fn hash(
         &self,
         password: &str,
-        salt_override: &str,
         rounds: &u32,
         kind: Self::Kind,
     ) -> Result<HasherResult, DefaultError>;
@@ -30,7 +29,6 @@ impl HashProvider for PBKDF2HashProvide {
     fn hash(
         &self,
         password: &str,
-        salt_override: &str,
         rounds: &u32,
         kind: Self::Kind,
     ) -> Result<HasherResult, DefaultError> {
@@ -38,7 +36,9 @@ impl HashProvider for PBKDF2HashProvide {
             HasherKind::PBKDF2 => {
                 tracing::info!("PBKDF2");
 
-                let hash = pbkdf2::Hasher::generate_hash(password, "", &rounds, false).unwrap();
+                let hash =
+                    pbkdf2::Hasher::hash(password, &rounds, pbkdf2::Algorithm::Pbkdf2Sha512, None)
+                        .unwrap();
 
                 Ok(HasherResult::new(
                     hash.hash(),
@@ -59,12 +59,11 @@ pub struct Hasher {}
 impl Hasher {
     pub fn hash<HK>(
         password: &str,
-        salt: &str,
         rounds: &u32,
         provider: impl HashProvider<Kind = HK>,
         kind: HK,
     ) -> HasherResult {
-        provider.hash(password, salt, rounds, kind).unwrap()
+        provider.hash(password, rounds, kind).unwrap()
     }
 }
 
@@ -102,7 +101,7 @@ mod tests {
         let mut table = Table::new();
 
         let pbkdf2 = PBKDF2HashProvide {};
-        let hash = Hasher::hash("password", "salt", &HASH_ROUNDS, pbkdf2, HasherKind::PBKDF2);
+        let hash = Hasher::hash("password", &HASH_ROUNDS, pbkdf2, HasherKind::PBKDF2);
         assert_ne!(hash.hash, "".to_string());
 
         let pbkdf_key_details = format!("PBKDF2 / SHA-512 with {} rounds", HASH_ROUNDS);

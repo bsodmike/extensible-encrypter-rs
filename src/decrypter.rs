@@ -43,6 +43,7 @@ impl DecryptProvider for PBKDF2DecryptProvide {
             DecrypterKind::Aes256GcmSiv => {
                 tracing::info!("Aes256GcmSiv");
 
+                // FIXME: old approach
                 let plaintext = input.decrypt()?;
 
                 Ok(DecryptionResult::new(plaintext))
