@@ -3,13 +3,14 @@ use crate::aes::AesVecBuffer;
 use crate::error::DefaultError;
 use ::aes::cipher;
 use ::aes::cipher::generic_array::GenericArray;
-use aes256_gcm_siv::{Decryptable, Decrypter as DecryptData, DecrypterPayload};
 use aes_gcm_siv::aead::Aead;
 use aes_gcm_siv::AesGcmSiv;
 use aes_gcm_siv::{
     aead::{AeadInPlace, Buffer, KeyInit, OsRng},
     Aes256GcmSiv, Nonce,
 };
+use builder::Decrypter as DecryptData;
+use builder::DecrypterPayload;
 use pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,
@@ -18,7 +19,7 @@ use std::fmt::Debug;
 use std::io::Read;
 use std::marker::PhantomData;
 
-pub mod aes256_gcm_siv;
+// pub mod aes256_gcm_siv;
 
 pub enum DecrypterCipher {
     Aes256GcmSiv,
@@ -105,6 +106,83 @@ impl DecryptProvider for PBKDF2DecryptProvide {
     }
 }
 
+pub(crate) mod builder {
+    pub struct Decrypter {
+        salt: String,
+        nonce: String,
+        ciphertext: String,
+    }
+
+    impl Decrypter {
+        pub fn from_payload(payload: &impl DecrypterPayload) -> Self {
+            Self {
+                salt: payload.salt().to_string(),
+                nonce: payload.nonce().to_string(),
+                ciphertext: payload.ciphertext().to_string(),
+            }
+        }
+    }
+
+    pub trait DecrypterPayload {
+        fn salt(&self) -> &str;
+        fn nonce(&self) -> &str;
+        fn ciphertext(&self) -> &str;
+    }
+
+    impl DecrypterPayload for &mut Decrypter {
+        fn salt(&self) -> &str {
+            &self.salt
+        }
+
+        fn nonce(&self) -> &str {
+            &self.nonce
+        }
+
+        fn ciphertext(&self) -> &str {
+            &self.ciphertext
+        }
+    }
+
+    pub struct DecrypterBuilder {
+        salt: String,
+        nonce: String,
+        ciphertext: String,
+    }
+
+    impl DecrypterBuilder {
+        pub fn new() -> Self {
+            Self {
+                salt: String::new(),
+                nonce: String::new(),
+                ciphertext: String::new(),
+            }
+        }
+
+        pub fn salt(mut self, key: &str) -> Self {
+            self.salt = key.to_string();
+            self
+        }
+
+        pub fn nonce(mut self, nonce: &str) -> Self {
+            self.nonce = nonce.to_string();
+            self
+        }
+
+        pub fn ciphertext(mut self, ciphertext: &str) -> Self {
+            self.ciphertext = ciphertext.to_string();
+            self
+        }
+
+        pub fn build(self) -> Decrypter {
+            Decrypter {
+                salt: self.salt,
+                nonce: self.nonce,
+                ciphertext: self.ciphertext,
+            }
+        }
+    }
+}
+
 pub struct DecryptionResult {
     plaintext: String,
 }
@@ -138,11 +216,7 @@ impl Decrypter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aes256_gcm_siv::DecrypterBuilder;
     use tracing_test::traced_test;
-
-    use prettytable::row;
-    use prettytable::Table;
 
     #[ignore]
     #[traced_test]
@@ -152,7 +226,7 @@ mod tests {
         let nonce = "66444888d4f0e1a69f387dfe";
         let salt = "30656e4d7a36716534452b414837384d4a4946635967";
 
-        let input = &mut aes256_gcm_siv::DecrypterBuilder::new()
+        let input = &mut builder::DecrypterBuilder::new()
             .salt(salt)
             .nonce(nonce)
             .ciphertext(ciphertext)

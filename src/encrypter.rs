@@ -148,7 +148,7 @@ mod tests {
         );
         tracing::info!("Result: {:?}", result);
 
-        let input = &mut crate::decrypter::aes256_gcm_siv::DecrypterBuilder::new()
+        let input = &mut crate::decrypter::builder::DecrypterBuilder::new()
             .salt(result.salt.as_str())
             .nonce(result.nonce.as_str())
             .ciphertext(result.ciphertext.as_str())
