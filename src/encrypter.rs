@@ -131,7 +131,6 @@ mod tests {
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_e2e() {
-        // let hash_provider = PBKDF2HashProvide {};
         let provider = Aes256GcmSivEncryptProvide {};
 
         let plaintext = "secret nuke codes go inside the football";
