@@ -34,7 +34,12 @@ pub enum Cipher {
 pub trait EncryptProvider {
     type Cipher;
 
-    fn encrypt(&self, password: &str, ek: Self::Cipher) -> Result<EncryptionResult, DefaultError>;
+    fn encrypt(
+        &self,
+        plaintext: &str,
+        password: &str,
+        ek: Self::Cipher,
+    ) -> Result<EncryptionResult, DefaultError>;
 }
 
 pub struct Aes256GcmSivEncryptProvide {}
@@ -44,14 +49,13 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
 
     fn encrypt(
         &self,
+        plaintext: &str,
         password: &str,
         encryption_kind: Self::Cipher,
     ) -> Result<EncryptionResult, DefaultError> {
         match encryption_kind {
             Cipher::Aes256GcmSiv(config) => {
                 tracing::info!("Encrypting: Aes256GcmSiv");
-
-                let plaintext = "secret nuke codes go inside the football";
 
                 // A salt for PBKDF2 (should be unique per encryption)
                 let salt = SaltString::generate(&mut OsRng);
@@ -108,11 +112,12 @@ pub struct Encrypter {}
 impl Encrypter {
     ///  Uses impl trait to accept any type that implements EncryptProvider to perform the encryption
     pub fn encrypt<C>(
+        plaintext: &str,
         password: &str,
         provider: impl EncryptProvider<Cipher = C>,
         cipher: C,
     ) -> EncryptionResult {
-        let result = provider.encrypt(password, cipher).unwrap();
+        let result = provider.encrypt(plaintext, password, cipher).unwrap();
 
         result
     }
@@ -129,8 +134,14 @@ mod tests {
         // let hash_provider = PBKDF2HashProvide {};
         let provider = Aes256GcmSivEncryptProvide {};
 
+        let plaintext = "secret nuke codes go inside the football";
         let cipher_config = Aes256GcmSivConfig::default();
-        let result = Encrypter::encrypt("password", provider, Cipher::Aes256GcmSiv(cipher_config));
+        let result = Encrypter::encrypt(
+            plaintext,
+            "password",
+            provider,
+            Cipher::Aes256GcmSiv(cipher_config),
+        );
         tracing::info!("Result: {:?}", result);
 
         let input = &mut crate::decrypter::builder::DecrypterBuilder::new()
