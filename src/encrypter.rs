@@ -41,15 +41,6 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 let salt_hex = hex::encode(salt.as_ref());
                 tracing::debug!("Salt: {}", &salt);
 
-                // FIXME: Similar to the decrypter, we need to pass the salt
-                // let hasher = crate::hasher::Hasher::hash(
-                //     password,
-                //     &HASH_ROUNDS,
-                //     hash_provider,
-                //     HasherKind::PBKDF2,
-                // );
-                // assert_ne!(hasher.hash, "".to_string());
-
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
                     password,
@@ -133,10 +124,11 @@ mod tests {
             .build();
 
         let provider = crate::decrypter::PBKDF2DecryptProvide {};
+        let cipher_config = crate::decrypter::Aes256GcmSivConfig::default();
         let result = crate::decrypter::Decrypter::decrypt(
             input,
             provider,
-            crate::decrypter::DecrypterCipher::Aes256GcmSiv,
+            crate::decrypter::DecrypterCipher::Aes256GcmSiv(cipher_config),
         );
 
         assert_eq!(

@@ -1,8 +1,5 @@
 use crate::error::DefaultError;
-use ::aes::cipher;
-use ::aes::cipher::generic_array::GenericArray;
 use aes_gcm_siv::aead::Aead;
-use aes_gcm_siv::AesGcmSiv;
 use aes_gcm_siv::{
     aead::{AeadInPlace, Buffer, KeyInit, OsRng},
     Aes256GcmSiv, Nonce,
@@ -19,8 +16,28 @@ use std::marker::PhantomData;
 
 pub(crate) mod builder;
 
+pub struct Aes256GcmSivConfig {
+    hash_rounds: u32,
+    hash_algorithm: super::hasher::pbkdf2::Algorithm,
+}
+impl Aes256GcmSivConfig {
+    fn set_hash_algorithm(&mut self, hash_algorithm: super::hasher::pbkdf2::Algorithm) {
+        self.hash_algorithm = hash_algorithm;
+    }
+}
+
+/// Default configuration for Aes256GcmSiv with 20 rounds of PBKDF2 SHA-512
+impl Default for Aes256GcmSivConfig {
+    fn default() -> Self {
+        Self {
+            hash_rounds: 20,
+            hash_algorithm: super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
+        }
+    }
+}
+
 pub enum DecrypterCipher {
-    Aes256GcmSiv,
+    Aes256GcmSiv(Aes256GcmSivConfig),
 }
 
 pub trait DecryptProvider {
@@ -44,13 +61,8 @@ impl DecryptProvider for PBKDF2DecryptProvide {
         cipher: Self::Cipher,
     ) -> Result<DecryptionResult, DefaultError> {
         match cipher {
-            DecrypterCipher::Aes256GcmSiv => {
+            DecrypterCipher::Aes256GcmSiv(config) => {
                 tracing::info!("Aes256GcmSiv");
-
-                // FIXME: old approach
-                // let plaintext = input.decrypt()?;
-
-                const HASH_ROUNDS: u32 = 20;
 
                 // Convert hex strings to bytes
                 let salt_hex = input.salt();
@@ -63,11 +75,10 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 let ciphertext = hex::decode(input.ciphertext()).unwrap();
 
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
-                // FIXME: Since the decryption process needs to pass and override the salt, I'm temporarily hardcoding it here.  Ideally, we should figure out away to pass this along.
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
                     "password",
-                    &HASH_ROUNDS,
-                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
+                    &config.hash_rounds,
+                    config.hash_algorithm,
                     Some(salt),
                 )
                 .unwrap();
@@ -139,7 +150,6 @@ mod tests {
     use super::*;
     use tracing_test::traced_test;
 
-    #[ignore]
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_pbkdf2_sha256() {
@@ -154,7 +164,15 @@ mod tests {
             .build();
 
         let provider = PBKDF2DecryptProvide {};
-        let result = Decrypter::decrypt(input, provider, DecrypterCipher::Aes256GcmSiv);
+
+        let mut cipher_config = Aes256GcmSivConfig::default();
+        cipher_config.set_hash_algorithm(crate::hasher::pbkdf2::Algorithm::Pbkdf2Sha256);
+
+        let result = Decrypter::decrypt(
+            input,
+            provider,
+            DecrypterCipher::Aes256GcmSiv(cipher_config),
+        );
 
         assert_eq!(result.plaintext, "hello there");
     }
