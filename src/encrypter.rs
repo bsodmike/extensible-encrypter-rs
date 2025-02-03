@@ -6,9 +6,8 @@ use aes_gcm_siv::{
 };
 use pbkdf2::password_hash::SaltString;
 
-const HASH_ROUNDS: u32 = 20;
-
 pub struct Aes256GcmSivConfig {
+    hash_rounds: u32,
     hash_algorithm: super::hasher::pbkdf2::Algorithm,
 }
 
@@ -22,6 +21,7 @@ impl Aes256GcmSivConfig {
 impl Default for Aes256GcmSivConfig {
     fn default() -> Self {
         Self {
+            hash_rounds: 20,
             hash_algorithm: super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
         }
     }
@@ -49,19 +49,18 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
     ) -> Result<EncryptionResult, DefaultError> {
         match encryption_kind {
             Cipher::Aes256GcmSiv(config) => {
-                tracing::info!("Aes256GcmSiv");
+                tracing::info!("Encrypting: Aes256GcmSiv");
 
                 let plaintext = "secret nuke codes go inside the football";
 
                 // A salt for PBKDF2 (should be unique per encryption)
                 let salt = SaltString::generate(&mut OsRng);
                 let salt_hex = hex::encode(salt.as_ref());
-                tracing::debug!("Salt: {}", &salt);
 
-                // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
+                // Derive a 32-byte key using PBKDF2 with SHA-512
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
                     password,
-                    &HASH_ROUNDS,
+                    &config.hash_rounds,
                     config.hash_algorithm,
                     Some(salt),
                 )

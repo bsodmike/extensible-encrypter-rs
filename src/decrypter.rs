@@ -55,16 +55,16 @@ impl DecryptProvider for PBKDF2DecryptProvide {
     ) -> Result<DecryptionResult, DefaultError> {
         match cipher {
             DecrypterCipher::Aes256GcmSiv(config) => {
-                tracing::info!("Aes256GcmSiv");
+                tracing::info!("Decrypting: Aes256GcmSiv");
 
                 // Convert hex strings to bytes
                 let salt_hex = input.salt();
                 let salt_decoded = hex::decode(salt_hex).unwrap();
                 let salt = SaltString::from_b64(&String::from_utf8(salt_decoded).unwrap()).unwrap();
-                println!("Salt: {:?}", salt);
 
                 let decoded_nonce = hex::decode(input.nonce()).unwrap();
                 let nonce = Nonce::from_slice(decoded_nonce.as_ref());
+
                 let ciphertext = hex::decode(input.ciphertext()).unwrap();
 
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
