@@ -9,38 +9,30 @@ use pbkdf2::password_hash::SaltString;
 
 const HASH_ROUNDS: u32 = 20;
 
-pub enum EncrypterKind {
-    Aes256GcmSiv,
+pub struct Aes256GcmSivConfig {}
+
+pub enum Cipher {
+    Aes256GcmSiv(Aes256GcmSivConfig),
 }
 
 pub trait EncryptProvider {
-    type EK;
-    type HK;
+    type Cipher;
 
-    fn encrypt(
-        &self,
-        password: &str,
-        hasher: impl HashProvider<Kind = Self::HK>,
-        ek: Self::EK,
-        hk: Self::HK,
-    ) -> Result<EncryptionResult, DefaultError>;
+    fn encrypt(&self, password: &str, ek: Self::Cipher) -> Result<EncryptionResult, DefaultError>;
 }
 
 pub struct Aes256GcmSivEncryptProvide {}
 
 impl EncryptProvider for Aes256GcmSivEncryptProvide {
-    type EK = EncrypterKind;
-    type HK = HasherKind;
+    type Cipher = Cipher;
 
     fn encrypt(
         &self,
         password: &str,
-        _hash_provider: impl HashProvider<Kind = Self::HK>,
-        encryption_kind: Self::EK,
-        _hasher_kind: Self::HK,
+        encryption_kind: Self::Cipher,
     ) -> Result<EncryptionResult, DefaultError> {
         match encryption_kind {
-            EncrypterKind::Aes256GcmSiv => {
+            Cipher::Aes256GcmSiv(config) => {
                 tracing::info!("Aes256GcmSiv");
 
                 let plaintext = "secret nuke codes go inside the football";
@@ -109,16 +101,12 @@ pub struct Encrypter {}
 
 impl Encrypter {
     ///  Uses impl trait to accept any type that implements EncryptProvider to perform the encryption
-    pub fn encrypt<EK, HK>(
+    pub fn encrypt<C>(
         password: &str,
-        hasher: impl HashProvider<Kind = HK>,
-        provider: impl EncryptProvider<EK = EK, HK = HK>,
-        encryption_kind: EK,
-        hasher_kind: HK,
+        provider: impl EncryptProvider<Cipher = C>,
+        cipher: C,
     ) -> EncryptionResult {
-        let result = provider
-            .encrypt(password, hasher, encryption_kind, hasher_kind)
-            .unwrap();
+        let result = provider.encrypt(password, cipher).unwrap();
 
         result
     }
@@ -137,13 +125,8 @@ mod tests {
         let hash_provider = PBKDF2HashProvide {};
         let provider = Aes256GcmSivEncryptProvide {};
 
-        let result = Encrypter::encrypt(
-            "password",
-            hash_provider,
-            provider,
-            EncrypterKind::Aes256GcmSiv,
-            HasherKind::PBKDF2,
-        );
+        let cipher_config = Aes256GcmSivConfig {};
+        let result = Encrypter::encrypt("password", provider, Cipher::Aes256GcmSiv(cipher_config));
         tracing::info!("Result: {:?}", result);
 
         let input = &mut crate::decrypter::builder::DecrypterBuilder::new()
