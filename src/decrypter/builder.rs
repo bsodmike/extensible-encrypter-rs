@@ -34,12 +34,14 @@ impl DecrypterPayload for &mut Decrypter {
     }
 }
 
+#[allow(dead_code)]
 pub struct DecrypterBuilder {
     salt: String,
     nonce: String,
     ciphertext: String,
 }
 
+#[allow(dead_code)]
 impl DecrypterBuilder {
     pub fn new() -> Self {
         Self {
