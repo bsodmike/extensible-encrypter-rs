@@ -5,7 +5,7 @@ use builder::Decrypter as DecryptData;
 use builder::DecrypterPayload;
 use pbkdf2::password_hash::SaltString;
 
-pub(crate) mod builder;
+pub mod builder;
 
 pub struct Aes256GcmSivConfig {
     hash_rounds: u32,
