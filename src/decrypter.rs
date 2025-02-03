@@ -1,18 +1,9 @@
 use crate::error::DefaultError;
 use aes_gcm_siv::aead::Aead;
-use aes_gcm_siv::{
-    aead::{AeadInPlace, Buffer, KeyInit, OsRng},
-    Aes256GcmSiv, Nonce,
-};
+use aes_gcm_siv::{aead::KeyInit, Aes256GcmSiv, Nonce};
 use builder::Decrypter as DecryptData;
 use builder::DecrypterPayload;
-use pbkdf2::{
-    password_hash::{PasswordHasher, SaltString},
-    Pbkdf2,
-};
-use std::fmt::Debug;
-use std::io::Read;
-use std::marker::PhantomData;
+use pbkdf2::password_hash::SaltString;
 
 pub(crate) mod builder;
 
@@ -20,6 +11,8 @@ pub struct Aes256GcmSivConfig {
     hash_rounds: u32,
     hash_algorithm: super::hasher::pbkdf2::Algorithm,
 }
+
+#[allow(dead_code)]
 impl Aes256GcmSivConfig {
     fn set_hash_algorithm(&mut self, hash_algorithm: super::hasher::pbkdf2::Algorithm) {
         self.hash_algorithm = hash_algorithm;
@@ -67,7 +60,7 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 // Convert hex strings to bytes
                 let salt_hex = input.salt();
                 let salt_decoded = hex::decode(salt_hex).unwrap();
-                let salt = SaltString::new(&String::from_utf8(salt_decoded).unwrap()).unwrap();
+                let salt = SaltString::from_b64(&String::from_utf8(salt_decoded).unwrap()).unwrap();
                 println!("Salt: {:?}", salt);
 
                 let decoded_nonce = hex::decode(input.nonce()).unwrap();

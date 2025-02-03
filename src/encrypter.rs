@@ -8,7 +8,24 @@ use pbkdf2::password_hash::SaltString;
 
 const HASH_ROUNDS: u32 = 20;
 
-pub struct Aes256GcmSivConfig {}
+pub struct Aes256GcmSivConfig {
+    hash_algorithm: super::hasher::pbkdf2::Algorithm,
+}
+
+#[allow(dead_code)]
+impl Aes256GcmSivConfig {
+    fn set_hash_algorithm(&mut self, hash_algorithm: super::hasher::pbkdf2::Algorithm) {
+        self.hash_algorithm = hash_algorithm;
+    }
+}
+/// Default configuration for Aes256GcmSiv
+impl Default for Aes256GcmSivConfig {
+    fn default() -> Self {
+        Self {
+            hash_algorithm: super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
+        }
+    }
+}
 
 pub enum Cipher {
     Aes256GcmSiv(Aes256GcmSivConfig),
@@ -45,7 +62,7 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
                     password,
                     &HASH_ROUNDS,
-                    super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
+                    config.hash_algorithm,
                     Some(salt),
                 )
                 .unwrap();
@@ -113,7 +130,7 @@ mod tests {
         // let hash_provider = PBKDF2HashProvide {};
         let provider = Aes256GcmSivEncryptProvide {};
 
-        let cipher_config = Aes256GcmSivConfig {};
+        let cipher_config = Aes256GcmSivConfig::default();
         let result = Encrypter::encrypt("password", provider, Cipher::Aes256GcmSiv(cipher_config));
         tracing::info!("Result: {:?}", result);
 
