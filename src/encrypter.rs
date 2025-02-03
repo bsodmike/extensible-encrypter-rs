@@ -1,5 +1,4 @@
 use crate::error::DefaultError;
-use crate::hasher::{HashProvider, HasherKind};
 use aes_gcm_siv::aead::rand_core::RngCore;
 use aes_gcm_siv::{
     aead::{Aead, KeyInit, OsRng},
@@ -115,14 +114,12 @@ impl Encrypter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hasher::HasherKind;
-    use crate::hasher::PBKDF2HashProvide;
     use tracing_test::traced_test;
 
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_e2e() {
-        let hash_provider = PBKDF2HashProvide {};
+        // let hash_provider = PBKDF2HashProvide {};
         let provider = Aes256GcmSivEncryptProvide {};
 
         let cipher_config = Aes256GcmSivConfig {};
