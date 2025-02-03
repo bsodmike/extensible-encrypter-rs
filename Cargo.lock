@@ -191,6 +191,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
+name = "extensible_encrypter"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "aes-gcm-siv",
+ "hex",
+ "hex-literal",
+ "hmac",
+ "pbkdf2",
+ "prettytable-rs",
+ "sha2",
+ "thiserror 2.0.11",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-test",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -353,24 +371,6 @@ dependencies = [
  "base64ct",
  "rand_core",
  "subtle",
-]
-
-[[package]]
-name = "pbkdf-encrypt-core"
-version = "0.1.0"
-dependencies = [
- "aes",
- "aes-gcm-siv",
- "hex",
- "hex-literal",
- "hmac",
- "pbkdf2",
- "prettytable-rs",
- "sha2",
- "thiserror 2.0.11",
- "tracing",
- "tracing-subscriber",
- "tracing-test",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "pbkdf-encrypt-core"
+name = "extensible_encrypter"
 version = "0.1.0"
 authors = ["SolidSnakeEater"]
 edition = "2021"

@@ -1,13 +1,20 @@
-# pbkdf-encrypt-core
+# extensible_encrypter
+
+The goal of this POC is to design a maintainable public API to this lib crate.  Your suggestions on improving this interface are most welcome!
 
 ## Upcoming
 
+- [ ] Add other hashing algorithms
+- [ ] Add other ciphers
 - [ ] Add examples
-- [ ] TBD
 
 ## Getting Started
 
 Currently, this crate is being evaluated for any security issues and should not be used in any production environment.  Should you wish you contribute to this work, please open an issue.
+
+```
+just dev
+```
 
 ## License
 
