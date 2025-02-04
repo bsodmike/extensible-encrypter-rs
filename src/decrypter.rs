@@ -14,8 +14,12 @@ pub struct Aes256GcmSivConfig {
 
 #[allow(dead_code)]
 impl Aes256GcmSivConfig {
-    fn set_hash_algorithm(&mut self, hash_algorithm: super::hasher::pbkdf2::Algorithm) {
+    pub fn set_hash_algorithm(&mut self, hash_algorithm: super::hasher::pbkdf2::Algorithm) {
         self.hash_algorithm = hash_algorithm;
+    }
+
+    pub fn set_hash_rounds(&mut self, hash_rounds: u32) {
+        self.hash_rounds = hash_rounds;
     }
 }
 
@@ -23,7 +27,7 @@ impl Aes256GcmSivConfig {
 impl Default for Aes256GcmSivConfig {
     fn default() -> Self {
         Self {
-            hash_rounds: 20,
+            hash_rounds: 600_000,
             hash_algorithm: super::hasher::pbkdf2::Algorithm::Pbkdf2Sha512,
         }
     }
@@ -161,6 +165,7 @@ mod tests {
 
         let mut cipher_config = Aes256GcmSivConfig::default();
         cipher_config.set_hash_algorithm(crate::hasher::pbkdf2::Algorithm::Pbkdf2Sha256);
+        cipher_config.set_hash_rounds(20); // low number of rounds for testing
 
         let result = Decrypter::decrypt(
             input,

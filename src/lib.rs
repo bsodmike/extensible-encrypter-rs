@@ -8,13 +8,15 @@
 //!     aead::{Aead, AeadCore, KeyInit, OsRng},
 //!     Aes256GcmSiv, Nonce
 //! };
-//! use extensible_encrypter::decrypter;
-//! use extensible_encrypter::encrypter;
+//! use extensible_encrypter::{decrypter, encrypter,
+//!    prelude::decrypter::builder::DecrypterBuilder};
 //!
 //! let provider = encrypter::Aes256GcmSivEncryptProvide {};
 //!
 //! let plaintext = "secret nuke codes go inside the football";
-//! let cipher_config = encrypter::Aes256GcmSivConfig::default();
+//! let mut cipher_config = encrypter::Aes256GcmSivConfig::default();
+//! cipher_config.set_hash_rounds(20); // low number of rounds for testing
+//!
 //! let result = encrypter::Encrypter::encrypt(
 //!     plaintext,
 //!     "password",
@@ -23,14 +25,16 @@
 //! );
 //! tracing::info!("Result: {:?}", result);
 //!
-//! let input = &mut extensible_encrypter::prelude::decrypter::builder::DecrypterBuilder::new()
+//! let input = &mut DecrypterBuilder::new()
 //!     .salt(result.salt)
 //!     .nonce(result.nonce)
 //!     .ciphertext(result.ciphertext)
 //!     .build();
 //!
 //! let provider = decrypter::PBKDF2DecryptProvide {};
-//! let cipher_config = decrypter::Aes256GcmSivConfig::default();
+//! let mut cipher_config = decrypter::Aes256GcmSivConfig::default();
+//! cipher_config.set_hash_rounds(20); // low number of rounds for testing
+//!
 //! let result = decrypter::Decrypter::decrypt(
 //!     input,
 //!     provider,
