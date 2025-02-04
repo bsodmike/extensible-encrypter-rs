@@ -147,23 +147,27 @@ mod tests {
         let nonce = "66444888d4f0e1a69f387dfe";
         let salt = "30656e4d7a36716534452b414837384d4a4946635967";
 
-        // let input = &mut builder::DecrypterBuilder::new()
-        //     .salt(salt)
-        //     .nonce(nonce)
-        //     .ciphertext(ciphertext)
-        //     .build();
-        //
-        // let provider = PBKDF2DecryptProvide {};
-        //
-        // let mut cipher_config = Aes256GcmSivConfig::default();
-        // cipher_config.set_hash_algorithm(crate::hasher::pbkdf2::Algorithm::Pbkdf2Sha256);
-        //
-        // let result = Decrypter::decrypt(
-        //     input,
-        //     provider,
-        //     DecrypterCipher::Aes256GcmSiv(cipher_config),
-        // );
-        //
-        // assert_eq!(result.plaintext, "hello there");
+        let ciphertext = hex::decode(ciphertext).unwrap();
+        let nonce = hex::decode(nonce).unwrap();
+        let salt = hex::decode(salt).unwrap();
+
+        let input = &mut builder::DecrypterBuilder::new()
+            .salt(salt)
+            .nonce(nonce)
+            .ciphertext(ciphertext)
+            .build();
+
+        let provider = PBKDF2DecryptProvide {};
+
+        let mut cipher_config = Aes256GcmSivConfig::default();
+        cipher_config.set_hash_algorithm(crate::hasher::pbkdf2::Algorithm::Pbkdf2Sha256);
+
+        let result = Decrypter::decrypt(
+            input,
+            provider,
+            DecrypterCipher::Aes256GcmSiv(cipher_config),
+        );
+
+        assert_eq!(result.plaintext, "hello there");
     }
 }
