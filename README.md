@@ -4,11 +4,12 @@ The goal of this POC is to design a maintainable public API to this lib crate.  
 
 ## Upcoming
 
-- [ ] Store bytes directly, between encoding/decoding
-- [ ] Encode to base64 instead of hex, as the latter wastes 2-bytes for every byte.
 - [ ] Add other hashing algorithms
 - [ ] Add other ciphers
 - [ ] Add examples
+
+Tips:
+- [ ] Use base64 encoding for transporting data, less wastage compared to hex.
 
 ## Getting Started
 

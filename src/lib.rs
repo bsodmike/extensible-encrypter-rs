@@ -24,9 +24,9 @@
 //! tracing::info!("Result: {:?}", result);
 //!
 //! let input = &mut extensible_encrypter::prelude::decrypter::builder::DecrypterBuilder::new()
-//!     .salt(result.salt.as_str())
-//!     .nonce(result.nonce.as_str())
-//!     .ciphertext(result.ciphertext.as_str())
+//!     .salt(result.salt)
+//!     .nonce(result.nonce)
+//!     .ciphertext(result.ciphertext)
 //!     .build();
 //!
 //! let provider = decrypter::PBKDF2DecryptProvide {};

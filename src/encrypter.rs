@@ -5,6 +5,7 @@ use aes_gcm_siv::{
     Aes256GcmSiv, Nonce,
 };
 use pbkdf2::password_hash::SaltString;
+use std::io::Write;
 
 pub struct Aes256GcmSivConfig {
     hash_rounds: u32,
@@ -58,8 +59,12 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 tracing::info!("Encrypting: Aes256GcmSiv");
 
                 // A salt for PBKDF2 (should be unique per encryption)
+                let mut salt_result = Vec::new();
                 let salt = SaltString::generate(&mut OsRng);
-                let salt_hex = hex::encode(salt.as_ref());
+                let salt_str = salt.as_str().as_bytes();
+                salt_result
+                    .write_all(salt_str)
+                    .expect("Failed copying salt into buffer");
 
                 // Derive a 32-byte key using PBKDF2 with SHA-512
                 let hasher = super::hasher::pbkdf2::Hasher::hash(
@@ -80,6 +85,11 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 // Generate a random nonce (96 bits)
                 let mut nonce = [0u8; 12]; // 96 bits = 12 bytes
                 OsRng.fill_bytes(&mut nonce);
+                let mut nonce_result = Vec::new();
+                nonce_result
+                    .write_all(&nonce)
+                    .expect("Failed copying nonce into buffer");
+
                 let nonce = Nonce::from_slice(&nonce); // Convert to Nonce type
 
                 // Encrypt the message
@@ -87,13 +97,10 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 tracing::debug!("Nonce: {:?}", nonce);
                 tracing::debug!("Ciphertext: {:?}", ciphertext);
 
-                let ciphertext_hex = hex::encode(ciphertext);
-                let nonce_hex = hex::encode(nonce);
-
                 Ok(EncryptionResult {
-                    ciphertext: ciphertext_hex,
-                    nonce: nonce_hex,
-                    salt: salt_hex,
+                    ciphertext,
+                    nonce: nonce_result,
+                    salt: salt_result,
                 })
             }
         }
@@ -102,9 +109,9 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
 
 #[derive(Debug)]
 pub struct EncryptionResult {
-    pub ciphertext: String,
-    pub nonce: String, // iv?
-    pub salt: String,
+    pub ciphertext: Vec<u8>,
+    pub nonce: Vec<u8>, // iv?
+    pub salt: Vec<u8>,
 }
 
 pub struct Encrypter {}
@@ -144,9 +151,9 @@ mod tests {
         tracing::info!("Result: {:?}", result);
 
         let input = &mut crate::decrypter::builder::DecrypterBuilder::new()
-            .salt(result.salt.as_str())
-            .nonce(result.nonce.as_str())
-            .ciphertext(result.ciphertext.as_str())
+            .salt(result.salt)
+            .nonce(result.nonce)
+            .ciphertext(result.ciphertext)
             .build();
 
         let provider = crate::decrypter::PBKDF2DecryptProvide {};
