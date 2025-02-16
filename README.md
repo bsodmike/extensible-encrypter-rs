@@ -2,6 +2,8 @@
 
 The goal of this POC is to design a maintainable public API to this lib crate.  Your suggestions on improving this interface are most welcome!
 
+- [Docs](https://bsodmike.github.io/extensible-encrypter-rs/extensible_encrypter/index.html)
+
 ## Upcoming
 
 - [ ] Add other hashing algorithms
