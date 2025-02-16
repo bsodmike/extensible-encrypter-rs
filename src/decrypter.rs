@@ -1,8 +1,7 @@
 use crate::error::DefaultError;
+use crate::prelude::*;
 use aes_gcm_siv::aead::Aead;
 use aes_gcm_siv::{aead::KeyInit, Aes256GcmSiv, Nonce};
-use builder::Decrypter as DecryptData;
-use builder::DecrypterPayload;
 use pbkdf2::password_hash::SaltString;
 
 pub mod builder;
@@ -47,7 +46,7 @@ pub trait DecryptProvider {
     ) -> Result<DecryptionResult, DefaultError>;
 }
 
-pub struct PBKDF2DecryptProvide {}
+pub struct PBKDF2DecryptProvide;
 
 impl DecryptProvider for PBKDF2DecryptProvide {
     type Cipher = DecrypterCipher;
@@ -123,7 +122,7 @@ impl DecryptionResult {
     }
 }
 
-pub struct Decrypter {}
+pub struct Decrypter;
 
 impl Decrypter {
     ///  Uses impl trait to accept any type that implements DecrypterPayload and converts it to DecryptData, passing this to the provider to perform the decryption

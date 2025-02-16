@@ -1,9 +1,10 @@
 # extensible_encrypter
 
-The goal of this POC is to design a maintainable public API to this lib crate.  Your suggestions on improving this interface are most welcome!
+TBD
 
 ## Upcoming
 
+- [ ] Improve docs
 - [ ] Add other hashing algorithms
 - [ ] Add other ciphers
 - [ ] Add examples

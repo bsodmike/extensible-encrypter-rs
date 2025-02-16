@@ -10,7 +10,7 @@ pub enum Algorithm {
     Pbkdf2Sha512,
 }
 
-pub struct Hasher {}
+pub struct Hasher;
 
 impl Hasher {
     /// Hash a password using PBKDF2 with SHA-256 or SHA-512
