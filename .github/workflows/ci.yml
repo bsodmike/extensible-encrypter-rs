@@ -106,6 +106,9 @@ jobs:
       - name: Install cargo-msrv
         run: cargo binstall -y --force cargo-msrv
 
+      - name: Run cargo-msrv (debug)
+        run: cargo msrv --output-format json verify | tail -n 1
+
       - name: Run cargo-msrv
         run: cargo msrv --output-format json verify | tail -n 1 | jq --exit-status '.success'
 

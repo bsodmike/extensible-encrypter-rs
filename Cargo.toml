@@ -1,9 +1,14 @@
 [package]
 name = "extensible_encrypter"
 version = "0.1.0"
-authors = ["SolidSnakeEater"]
+authors = ["Michael de Silva <michael@crustyengineer.com>"]
+repository = "https://github.com/bsodmike/extensible-encrypter-rs"
+license = "MIT OR Apache-2.0"
+description = "Extensible API for symmetric key encryption"
+readme = "README.md"
 edition = "2021"
 publish = false
+rust-version = "1.84.1"
 
 [dependencies]
 # AES - Upgrading causes breakage
