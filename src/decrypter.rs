@@ -47,7 +47,7 @@ pub trait DecryptProvider {
     ) -> Result<DecryptionResult, DefaultError>;
 }
 
-pub struct PBKDF2DecryptProvide {}
+pub struct PBKDF2DecryptProvide;
 
 impl DecryptProvider for PBKDF2DecryptProvide {
     type Cipher = DecrypterCipher;
@@ -123,7 +123,7 @@ impl DecryptionResult {
     }
 }
 
-pub struct Decrypter {}
+pub struct Decrypter;
 
 impl Decrypter {
     ///  Uses impl trait to accept any type that implements DecrypterPayload and converts it to DecryptData, passing this to the provider to perform the decryption

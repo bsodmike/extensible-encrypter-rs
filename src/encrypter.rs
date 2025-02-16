@@ -47,7 +47,7 @@ pub trait EncryptProvider {
     ) -> Result<EncryptionResult, DefaultError>;
 }
 
-pub struct Aes256GcmSivEncryptProvide {}
+pub struct Aes256GcmSivEncryptProvide;
 
 impl EncryptProvider for Aes256GcmSivEncryptProvide {
     type Cipher = Cipher;
@@ -118,7 +118,7 @@ pub struct EncryptionResult {
     pub salt: Vec<u8>,
 }
 
-pub struct Encrypter {}
+pub struct Encrypter;
 
 impl Encrypter {
     ///  Uses impl trait to accept any type that implements EncryptProvider to perform the encryption
