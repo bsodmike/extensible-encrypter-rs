@@ -116,4 +116,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo rustdoc --no-deps
+      - run: cargo rustdoc -- --no-deps
