@@ -2,4 +2,4 @@ dev:
   cargo build
   cargo test
   cargo fmt
-  cargo doc
+  cargo doc --no-deps
