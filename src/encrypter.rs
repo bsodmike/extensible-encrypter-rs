@@ -47,7 +47,7 @@ pub trait EncryptProvider {
     ) -> Result<EncryptionResult, DefaultError>;
 }
 
-pub struct Aes256GcmSivEncryptProvide {}
+pub struct Aes256GcmSivEncryptProvide;
 
 impl EncryptProvider for Aes256GcmSivEncryptProvide {
     type Cipher = Cipher;
@@ -118,7 +118,7 @@ pub struct EncryptionResult {
     pub salt: Vec<u8>,
 }
 
-pub struct Encrypter {}
+pub struct Encrypter;
 
 impl Encrypter {
     ///  Uses impl trait to accept any type that implements EncryptProvider to perform the encryption
@@ -142,7 +142,7 @@ mod tests {
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_e2e() {
-        let provider = Aes256GcmSivEncryptProvide {};
+        let provider = Aes256GcmSivEncryptProvide;
 
         let plaintext = "secret nuke codes go inside the football";
         let mut cipher_config = Aes256GcmSivConfig::default();
@@ -162,7 +162,7 @@ mod tests {
             .ciphertext(result.ciphertext)
             .build();
 
-        let provider = crate::decrypter::PBKDF2DecryptProvide {};
+        let provider = crate::decrypter::PBKDF2DecryptProvide;
         let mut cipher_config = crate::decrypter::Aes256GcmSivConfig::default();
         cipher_config.set_hash_rounds(20); // low number of rounds for testing
 
