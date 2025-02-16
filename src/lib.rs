@@ -8,10 +8,9 @@
 //!     aead::{Aead, AeadCore, KeyInit, OsRng},
 //!     Aes256GcmSiv, Nonce
 //! };
-//! use extensible_encrypter::{decrypter, encrypter,
-//!    prelude::decrypter::builder::DecrypterBuilder};
+//! use extensible_encrypter::prelude::*;
 //!
-//! let provider = encrypter::Aes256GcmSivEncryptProvide {};
+//! let provider = encrypter::Aes256GcmSivEncryptProvide;
 //!
 //! let plaintext = "secret nuke codes go inside the football";
 //! let mut cipher_config = encrypter::Aes256GcmSivConfig::default();
@@ -31,7 +30,7 @@
 //!     .ciphertext(result.ciphertext)
 //!     .build();
 //!
-//! let provider = decrypter::PBKDF2DecryptProvide {};
+//! let provider = decrypter::PBKDF2DecryptProvide;
 //! let mut cipher_config = decrypter::Aes256GcmSivConfig::default();
 //! cipher_config.set_hash_rounds(20); // low number of rounds for testing
 //!
@@ -57,5 +56,9 @@ pub mod hasher;
 
 #[allow(unused_imports)]
 pub mod prelude {
-    pub use crate::decrypter;
+    pub use crate::decrypter::{
+        self, builder,
+        builder::{Decrypter as DecryptData, DecrypterBuilder, DecrypterPayload},
+    };
+    pub use crate::encrypter;
 }

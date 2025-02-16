@@ -142,7 +142,7 @@ mod tests {
     #[traced_test]
     #[test]
     fn aes256_gcm_siv_e2e() {
-        let provider = Aes256GcmSivEncryptProvide {};
+        let provider = Aes256GcmSivEncryptProvide;
 
         let plaintext = "secret nuke codes go inside the football";
         let mut cipher_config = Aes256GcmSivConfig::default();
@@ -162,7 +162,7 @@ mod tests {
             .ciphertext(result.ciphertext)
             .build();
 
-        let provider = crate::decrypter::PBKDF2DecryptProvide {};
+        let provider = crate::decrypter::PBKDF2DecryptProvide;
         let mut cipher_config = crate::decrypter::Aes256GcmSivConfig::default();
         cipher_config.set_hash_rounds(20); // low number of rounds for testing
 
