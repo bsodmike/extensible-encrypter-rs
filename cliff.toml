@@ -7,7 +7,7 @@ repo = "extensible-encrypter-rs"
 [changelog]
 # changelog header
 header = """
-[**extensible-encrypter**](https://github.com/bsodmike/extensible-encrypter-rs): Encrypt like a boss 😼🕵️‍♂️\n
+[**extensible-encrypter**](https://github.com/bsodmike/extensible-encrypter-rs): Encrypt like a boss 😼\n
 """
 # template for the changelog body
 # https://keats.github.io/tera/docs/#introduction
