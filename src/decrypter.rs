@@ -91,7 +91,7 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                     Err(err) => {
                         return Err(DefaultError::ErrorMessage(format!(
                             "Failed to decrypt due to {}.",
-                            err.to_string()
+                            err
                         )))
                     }
                 };
@@ -127,14 +127,12 @@ pub struct Decrypter;
 impl Decrypter {
     ///  Uses impl trait to accept any type that implements DecrypterPayload and converts it to DecryptData, passing this to the provider to perform the decryption
     pub fn decrypt<CipherType>(
-        mut input: impl DecrypterPayload,
+        input: impl DecrypterPayload,
         provider: impl DecryptProvider<Cipher = CipherType>,
         cipher: CipherType,
     ) -> DecryptionResult {
-        let input = &mut DecryptData::from_payload(&mut input);
-        let result = provider.decrypt(input, cipher).unwrap();
-
-        result
+        let input = &mut DecryptData::from_payload(&input);
+        provider.decrypt(input, cipher).expect("Decryption failed")
     }
 }
 

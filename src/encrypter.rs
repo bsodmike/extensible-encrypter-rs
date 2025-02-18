@@ -97,7 +97,9 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                 let nonce = Nonce::from_slice(&nonce); // Convert to Nonce type
 
                 // Encrypt the message
-                let ciphertext = cipher.encrypt(&nonce, plaintext.as_bytes()).unwrap(); // Output the results
+                let ciphertext = cipher
+                    .encrypt(nonce, plaintext.as_bytes())
+                    .expect("Encryption failed"); // Output the results
                 tracing::debug!("Nonce: {:?}", nonce);
                 tracing::debug!("Ciphertext: {:?}", ciphertext);
 
@@ -128,9 +130,9 @@ impl Encrypter {
         provider: impl EncryptProvider<Cipher = C>,
         cipher: C,
     ) -> EncryptionResult {
-        let result = provider.encrypt(plaintext, password, cipher).unwrap();
-
-        result
+        provider
+            .encrypt(plaintext, password, cipher)
+            .expect("Encryption failed")
     }
 }
 

@@ -20,8 +20,7 @@ impl Hasher {
     /// * `password` - The password to hash
     /// * `rounds` - The number of rounds to hash the password
     /// * `algorithm` - The algorithm to use for hashing
-    /// * `override_salt` - Salt is optional, if not provided a random salt will be generated, this
-    /// should be the default usage.  This is included for testing purposes.
+    /// * `override_salt` - Salt is optional, if not provided a random salt will be generated, this should be the default usage.  This is included for testing purposes.
     ///
     pub fn hash(
         password: &str,
