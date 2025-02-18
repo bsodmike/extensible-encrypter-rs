@@ -1,4 +1,3 @@
-use base64::{engine::general_purpose, Engine as _};
 use extensible_encrypter::prelude::*;
 
 #[macro_use]
@@ -19,17 +18,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         provider,
         encrypter::Cipher::Aes256GcmSiv(cipher_config),
     );
-    let cipher_b64 = general_purpose::STANDARD.encode(result.ciphertext);
-    let nonce_b64 = general_purpose::STANDARD.encode(result.nonce);
-    let salt_b64 = general_purpose::STANDARD.encode(result.salt);
 
     let mut table = Table::new();
-    table.add_row(row!["Cipher", cipher_b64]);
+    table.add_row(row!["Cipher", result.ciphertext_b64()]);
     table.add_row(row![
         format!("Nonce (IV)\nRounds {}", nonce_rounds),
-        nonce_b64
+        result.nonce_b64()
     ]);
-    table.add_row(row!["Salt", salt_b64]);
+    table.add_row(row!["Salt", result.salt_b64()]);
 
     // Print the table to stdout
     table.printstd();
