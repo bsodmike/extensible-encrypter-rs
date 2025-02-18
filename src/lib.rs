@@ -6,9 +6,9 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use extensible_encrypter::prelude::*;
 //!
-//! let provider = encrypter::Aes256GcmSivEncryptProvide;
-//!
 //! let plaintext = "secret nuke codes go inside the football";
+//!
+//! let provider = encrypter::Aes256GcmSivEncryptProvide;
 //! let mut cipher_config = encrypter::Aes256GcmSivConfig::default();
 //! cipher_config.set_hash_rounds(20); // low number of rounds for testing
 //!
@@ -18,6 +18,7 @@
 //!     provider,
 //!     encrypter::Cipher::Aes256GcmSiv(cipher_config),
 //! );
+//! let result = result.expect("Encryption failed");
 //! tracing::info!("Result: {:?}", result);
 //!
 //! let input = &mut DecrypterBuilder::new()
@@ -37,7 +38,7 @@
 //! );
 //!
 //! assert_eq!(
-//!     result.plaintext(),
+//!     result?.plaintext(),
 //!     "secret nuke codes go inside the football"
 //! );
 //!

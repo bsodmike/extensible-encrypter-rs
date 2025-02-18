@@ -1,4 +1,4 @@
-use crate::error::DefaultError;
+use crate::error::{self, DefaultError};
 use crate::prelude::*;
 use aes_gcm_siv::aead::Aead;
 use aes_gcm_siv::{aead::KeyInit, Aes256GcmSiv, Nonce};
@@ -130,9 +130,10 @@ impl Decrypter {
         input: impl DecrypterPayload,
         provider: impl DecryptProvider<Cipher = CipherType>,
         cipher: CipherType,
-    ) -> DecryptionResult {
+    ) -> error::Result<DecryptionResult> {
         let input = &mut DecryptData::from_payload(&input);
-        provider.decrypt(input, cipher).expect("Decryption failed")
+
+        provider.decrypt(input, cipher)
     }
 }
 
@@ -169,6 +170,7 @@ mod tests {
             provider,
             DecrypterCipher::Aes256GcmSiv(cipher_config),
         );
+        let result = result.expect("Decryption failed");
 
         assert_eq!(result.plaintext, "hello there");
     }

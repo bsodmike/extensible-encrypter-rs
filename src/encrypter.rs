@@ -1,4 +1,4 @@
-use crate::error::DefaultError;
+use crate::error::{self, DefaultError};
 use aes_gcm_siv::aead::rand_core::RngCore;
 use aes_gcm_siv::{
     aead::{Aead, KeyInit, OsRng},
@@ -156,10 +156,8 @@ impl Encrypter {
         password: &str,
         provider: impl EncryptProvider<Cipher = C>,
         cipher: C,
-    ) -> EncryptionResult {
-        provider
-            .encrypt(plaintext, password, cipher)
-            .expect("Encryption failed")
+    ) -> error::Result<EncryptionResult> {
+        provider.encrypt(plaintext, password, cipher)
     }
 }
 
@@ -183,6 +181,7 @@ mod tests {
             provider,
             Cipher::Aes256GcmSiv(cipher_config),
         );
+        let result = result.expect("Encryption failed");
         tracing::info!("Result: {:?}", result);
 
         let input = &mut crate::decrypter::builder::DecrypterBuilder::new()
@@ -200,6 +199,7 @@ mod tests {
             provider,
             crate::decrypter::DecrypterCipher::Aes256GcmSiv(cipher_config),
         );
+        let result = result.expect("Decryption failed");
 
         assert_eq!(
             result.plaintext(),
