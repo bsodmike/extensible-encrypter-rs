@@ -4,10 +4,6 @@
 //!
 //! ```
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use aes_gcm_siv::{
-//!     aead::{Aead, AeadCore, KeyInit, OsRng},
-//!     Aes256GcmSiv, Nonce
-//! };
 //! use extensible_encrypter::prelude::*;
 //!
 //! let provider = encrypter::Aes256GcmSivEncryptProvide;

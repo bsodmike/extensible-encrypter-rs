@@ -1,0 +1,10 @@
+[package]
+name = "encrypt"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base64 = "0.22.1"
+extensible_encrypter = { path = "../../" }
+hex = "^0.4"
+prettytable-rs = "0.10.0"
