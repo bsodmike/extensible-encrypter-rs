@@ -1,0 +1,8 @@
+[package]
+name = "encrypt"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+extensible_encrypter = { path = "../../" }
+prettytable-rs = "0.10.0"

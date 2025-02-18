@@ -4,6 +4,7 @@ use aes_gcm_siv::{
     aead::{Aead, KeyInit, OsRng},
     Aes256GcmSiv, Nonce,
 };
+use base64::{engine::general_purpose, Engine as _};
 use pbkdf2::password_hash::SaltString;
 use std::io::Write;
 
@@ -118,6 +119,32 @@ pub struct EncryptionResult {
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>, // iv?
     pub salt: Vec<u8>,
+}
+
+impl EncryptionResult {
+    pub fn ciphertext(&self) -> &[u8] {
+        &self.ciphertext
+    }
+
+    pub fn nonce(&self) -> &[u8] {
+        &self.nonce
+    }
+
+    pub fn salt(&self) -> &[u8] {
+        &self.salt
+    }
+
+    pub fn ciphertext_b64(&self) -> String {
+        general_purpose::STANDARD.encode(self.ciphertext())
+    }
+
+    pub fn nonce_b64(&self) -> String {
+        general_purpose::STANDARD.encode(self.nonce())
+    }
+
+    pub fn salt_b64(&self) -> String {
+        general_purpose::STANDARD.encode(self.salt())
+    }
 }
 
 pub struct Encrypter;
