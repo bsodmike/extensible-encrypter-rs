@@ -34,6 +34,7 @@ impl DecrypterPayload for &mut Decrypter {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct DecrypterBuilder {
     salt: Vec<u8>,
     nonce: Vec<u8>,
