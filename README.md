@@ -26,3 +26,6 @@ just dev
 
 Licensed under either of [Apache License Version 2.0](./LICENSE-APACHE) or [The MIT License](./LICENSE-MIT) at your option.
 
+## Kudos
+
+Thanks to [Orhun Parmaksız](https://github.com/orhun) for his support and advice 🙏
