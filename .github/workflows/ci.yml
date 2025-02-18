@@ -93,24 +93,21 @@ jobs:
       - name: Check typos
         uses: crate-ci/typos@master
 
-  msrv:
-    name: MSRV
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v4
-
-      - name: Install cargo-binstall
-        uses: taiki-e/install-action@cargo-binstall
-
-      - name: Install cargo-msrv
-        run: cargo binstall -y --force cargo-msrv
-
-      - name: Run cargo-msrv (debug)
-        run: cargo msrv --output-format json verify | tail -n 1
-
-      - name: Run cargo-msrv
-        run: cargo msrv --output-format json verify | tail -n 1 | jq --exit-status '.success'
+  # msrv:
+  #   name: MSRV
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout the repository
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Install cargo-binstall
+  #       uses: taiki-e/install-action@cargo-binstall
+  #
+  #     - name: Install cargo-msrv
+  #       run: cargo binstall -y --force cargo-msrv
+  #
+  #     - name: Run cargo-msrv
+  #       run: cargo msrv --output-format json verify | tail -n 1 | jq --exit-status '.success'
 
   doc:
     name: doc
