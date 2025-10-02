@@ -11,7 +11,6 @@ pub struct Aes256GcmSivConfig {
     hash_algorithm: super::hasher::pbkdf2::Algorithm,
 }
 
-#[allow(dead_code)]
 impl Aes256GcmSivConfig {
     pub fn set_hash_algorithm(&mut self, hash_algorithm: super::hasher::pbkdf2::Algorithm) {
         self.hash_algorithm = hash_algorithm;
@@ -64,7 +63,9 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                 let salt = String::from_utf8(input.salt().clone())?;
                 let salt = SaltString::from_b64(salt.as_str()).expect("salt is base64 encoded");
 
-                let nonce = Nonce::from_slice(input.nonce());
+                let nonce = Nonce::try_from(&input.nonce()[..]).map_err(|_err| {
+                    DefaultError::ErrorMessage("Failed parsing nonce from slice".to_string())
+                })?;
                 let ciphertext = input.ciphertext();
 
                 // Derive a 32-byte key using PBKDF2 with SHA-512 and 20 rounds
@@ -73,11 +74,10 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                     &config.hash_rounds,
                     config.hash_algorithm,
                     Some(salt),
-                )
-                .unwrap();
+                )?;
 
                 // Convert the key to a fixed-size array
-                let key = hex::decode(hasher.hash().as_str()).unwrap();
+                let key = hex::decode(hasher.hash().as_str())?;
                 let decryption_key_array: [u8; 32] = key.try_into().unwrap();
 
                 // Initialize the AES-GCM-SIV cipher for decryption
@@ -85,7 +85,7 @@ impl DecryptProvider for PBKDF2DecryptProvide {
                     Aes256GcmSiv::new_from_slice(&decryption_key_array).unwrap();
 
                 // Decrypt the ciphertext
-                let decrypted_message = match decryption_cipher.decrypt(nonce, ciphertext.as_ref())
+                let decrypted_message = match decryption_cipher.decrypt(&nonce, ciphertext.as_ref())
                 {
                     Ok(message) => message,
                     Err(err) => {

@@ -25,5 +25,6 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+/.idea
 /target
 /examples/encrypt/target/*

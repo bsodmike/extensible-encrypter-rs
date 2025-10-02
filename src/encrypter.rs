@@ -1,11 +1,13 @@
 use crate::error::{self, DefaultError};
 use aes_gcm_siv::aead::rand_core::RngCore;
 use aes_gcm_siv::{
-    aead::{Aead, KeyInit, OsRng},
+    aead::{Aead, KeyInit},
     Aes256GcmSiv, Nonce,
 };
 use base64::{engine::general_purpose, Engine as _};
 use pbkdf2::password_hash::SaltString;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha12Rng;
 use std::io::Write;
 
 pub struct Aes256GcmSivConfig {
@@ -65,7 +67,8 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
 
                 // A salt for PBKDF2 (should be unique per encryption)
                 let mut salt_result = Vec::new();
-                let salt = SaltString::generate(&mut OsRng);
+                let mut rng = ChaCha12Rng::from_os_rng();
+                let salt = SaltString::from_rng(&mut rng);
                 let salt_str = salt.as_str().as_bytes();
                 salt_result
                     .write_all(salt_str)
@@ -77,8 +80,7 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
                     &config.hash_rounds,
                     config.hash_algorithm,
                     Some(salt),
-                )
-                .unwrap();
+                )?;
 
                 // Convert the key to a fixed-size array
                 let key = hex::decode(hasher.hash().as_str()).unwrap();
@@ -89,17 +91,20 @@ impl EncryptProvider for Aes256GcmSivEncryptProvide {
 
                 // Generate a random nonce (96 bits)
                 let mut nonce = [0u8; 12]; // 96 bits = 12 bytes
-                OsRng.fill_bytes(&mut nonce);
+                let mut rng = ChaCha12Rng::from_os_rng();
+                rng.fill_bytes(&mut nonce);
                 let mut nonce_result = Vec::new();
                 nonce_result
                     .write_all(&nonce)
                     .expect("Failed copying nonce into buffer");
 
-                let nonce = Nonce::from_slice(&nonce); // Convert to Nonce type
+                let nonce = Nonce::try_from(&nonce[..]).map_err(|_err| {
+                    DefaultError::ErrorMessage("Failed parsing nonce from slice".to_string())
+                })?;
 
                 // Encrypt the message
                 let ciphertext = cipher
-                    .encrypt(nonce, plaintext.as_bytes())
+                    .encrypt(&nonce, plaintext.as_bytes())
                     .expect("Encryption failed"); // Output the results
                 tracing::debug!("Nonce: {:?}", nonce);
                 tracing::debug!("Ciphertext: {:?}", ciphertext);
