@@ -1,9 +1,10 @@
 use crate::error;
-use aes_gcm_siv::aead::OsRng;
 use pbkdf2::{
     password_hash::{Ident, PasswordHasher, SaltString},
     Pbkdf2,
 };
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha12Rng;
 
 pub enum Algorithm {
     Pbkdf2Sha256,
@@ -30,7 +31,8 @@ impl Hasher {
     ) -> error::Result<HasherResult>
 where {
         // A salt for PBKDF2 (should be unique per encryption)
-        let mut salt = SaltString::generate(&mut OsRng);
+        let mut rng = ChaCha12Rng::from_os_rng();
+        let mut salt = SaltString::from_rng(&mut rng);
         if let Some(value) = override_salt {
             salt = SaltString::from_b64(value.as_str()).expect("salt is base64 encoded");
         }

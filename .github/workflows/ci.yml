@@ -34,7 +34,7 @@ jobs:
     env: {"RUSTFLAGS": "-D warnings"}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@beta
+      - uses: dtolnay/rust-toolchain@stable
       - run: cargo test
 
   clippy:
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@beta
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - run: cargo clippy -- -D warnings
@@ -52,10 +52,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - run: cargo +nightly fmt -- --check
+      - run: cargo fmt -- --check
 
   deny:
     name: Deny
